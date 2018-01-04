@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEditor;
 
 using Ntreev.Library.Psd;
@@ -32,6 +33,12 @@ public class PSDImporter
             string outputPath = Path.Combine(selectedObjectFolder, "ImportedTextures");
             Directory.CreateDirectory(outputPath);
 
+            var canvasGameObject = new GameObject("Canvas", typeof(Canvas));
+            var canvasRectTransform = canvasGameObject.GetComponent<RectTransform>();
+            canvasRectTransform.sizeDelta = new Vector2(document.Width, document.Height);
+
+            var a = document.ImageResources;
+
             foreach (IPsdLayer layer in document.Childs)
             {
                 Debug.Log("LayerName : " + layer.Name);
@@ -39,6 +46,16 @@ public class PSDImporter
 
                 string outputFilename = Path.Combine(outputPath, layer.Name + ".png");
                 File.WriteAllBytes(outputFilename, texture.EncodeToPNG());
+
+                var imageGameObject = new GameObject(layer.Name, typeof(Image));
+                var image = imageGameObject.GetComponent<Image>();
+                image.transform.SetParent(canvasGameObject.transform, worldPositionStays:false);
+                var imageRectTransform = image.GetComponent<RectTransform>();
+                imageRectTransform.position = new Vector3((layer.Left + layer.Right)/2, 
+                                document.Height - (layer.Bottom + layer.Top)/2, 0);
+                imageRectTransform.sizeDelta = new Vector2(layer.Width, layer.Height);
+
+                image.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(outputFilename);
             }
         }
         AssetDatabase.Refresh();
