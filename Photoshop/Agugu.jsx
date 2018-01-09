@@ -16,6 +16,47 @@ function setLayerConfig(config, layerName, propertyName, propertyValue){
 	config[layerName][propertyName] = propertyValue;
 }
 
+// XMP
+function loadConfigFromXMP(config, xmp){
+	var configRoot = xmp.getProperty(aguguXmpNamespace, xmpConfigRootTag);
+	if(configRoot == undefined){
+		return;
+	}
+
+	var layersRootPath = XMPUtils.composeStructFieldPath(aguguXmpNamespace, xmpConfigRootTag, 
+														 aguguXmpNamespace, xmpLayersRootTag);
+	var layersRoot = xmp.getProperty(aguguXmpNamespace, layersRootPath);
+	if(layersRoot == undefined){
+		return;
+	}
+    
+	var layerCount = xmp.countArrayItems(aguguXmpNamespace, layersRootPath);
+	for(var i = 1; i <= layerCount; i++){
+		var layerPath = XMPUtils.composeArrayItemPath(aguguXmpNamespace, layersRootPath, i);
+		var layerNamePath = XMPUtils.composeStructFieldPath(aguguXmpNamespace, layerPath,
+															aguguXmpNamespace, xmpLayerNameTag);
+		var layerName = xmp.getProperty(aguguXmpNamespace, layerNamePath).value;
+        
+		var iter = xmp.iterator(XMPConst.ITERATOR_JUST_CHILDREN , aguguXmpNamespace, layerPath);
+		var layerProperty = iter.next();
+		while( layerProperty != null){
+			var propertyPath = layerProperty.path;
+            var propertyName = getLeafPropertyName(propertyPath, aguguNamespacePrefix);
+			var propertyValue = xmp.getProperty(aguguXmpNamespace, propertyPath).value;
+			
+			setLayerConfig(config, layerName, propertyName, propertyValue);
+			layerProperty = iter.next();
+		}
+	}
+} 
+
+function getLeafPropertyName(xmpPath, namespacePrefix){
+	var pathElements = xmpPath.split("/");
+	var pathElementsCount = pathElements.length;
+	var leafPropertyNameWithNamespace = pathElements[pathElementsCount-1];
+	return leafPropertyNameWithNamespace.replace(namespacePrefix, "")
+}
+
 // Widget Type
 const widgetType = ['image', 'button', 'text']
 function createWidgetButtonCallback(widgetType){
@@ -66,6 +107,22 @@ function getLayerStatusText(selectedLayerName) {
 }
 
 var config = {};
+
+const aguguXmpNamespace = "http://www.agugu.org/";
+const aguguNamespacePrefix = "agugu:";
+const xmpConfigRootTag = "Config";
+const xmpLayersRootTag = "Layers";
+const xmpLayerNameTag = "Name";
+
+// Load XMPMeta reference
+if(ExternalObject.AdobeXMPScript == undefined) {
+	ExternalObject.AdobeXMPScript = new ExternalObject('lib:AdobeXMPScript');
+}
+
+var xmp = new XMPMeta(activeDocument.xmpMetadata.rawData);
+XMPMeta.registerNamespace(aguguXmpNamespace, aguguNamespacePrefix);
+
+loadConfigFromXMP(config, xmp);
 
 var mainWindow = new Window ("palette", "Agugu");
 mainWindow.orientation = "row";
