@@ -1,16 +1,27 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Xml.Linq;
 
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEditor;
 
 using Ntreev.Library.Psd;
+using Ntreev.Library.Psd.Readers.ImageResources;
 
 
 public class PSDImporter
 {
+    private const string AguguNamespace = "http://www.agugu.org/";
+    private const string AguguNamespacePrefix = "agugu:";
+
+    private const string ConfigRootTag = "Config";
+    private const string LayersRootTag = "Layers";
+    private const string BagTag = "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}Bag";
+    private const string NamePropertyTag = "Name";
+
     [MenuItem("Agugu/Import Selection")]
     public static void ImportSelection()
     {
@@ -29,6 +40,8 @@ public class PSDImporter
 
         using (var document = PsdDocument.Create(selectedObjectPath))
         {
+            var layersConfig = _ParseConfig(document);
+
             string selectedObjectFolder = Path.GetDirectoryName(selectedObjectPath);
             string outputPath = Path.Combine(selectedObjectFolder, "ImportedTextures");
             Directory.CreateDirectory(outputPath);
@@ -36,8 +49,6 @@ public class PSDImporter
             var canvasGameObject = new GameObject("Canvas", typeof(Canvas));
             var canvasRectTransform = canvasGameObject.GetComponent<RectTransform>();
             canvasRectTransform.sizeDelta = new Vector2(document.Width, document.Height);
-
-            var a = document.ImageResources;
 
             foreach (IPsdLayer layer in document.Childs)
             {
@@ -59,6 +70,58 @@ public class PSDImporter
             }
         }
         AssetDatabase.Refresh();
+    }
+
+    private static Dictionary<string, Dictionary<string, string>> _ParseConfig(PsdDocument document)
+    {
+        var result = new Dictionary<string, Dictionary<string, string>>();
+
+        IProperties imageResources = document.ImageResources;
+        var xmpImageResource = imageResources["XmpMetadata"] as Reader_XmpMetadata;
+        var xmpValue = xmpImageResource.Value["Xmp"] as string;
+        var xmp = XDocument.Parse(xmpValue);
+
+        XNamespace xnamespace = AguguNamespace;
+        XElement configRoot = xmp.Descendants(xnamespace + ConfigRootTag).FirstOrDefault();
+        if (configRoot == null)
+        {
+            return result;
+        }
+
+        XElement layersConfigRoot = configRoot.Descendants(xnamespace + LayersRootTag).FirstOrDefault();
+        if (layersConfigRoot == null)
+        {
+            return result;
+        }
+
+        XElement bag = layersConfigRoot.Element(BagTag);
+        if (bag == null)
+        {
+            return result;
+        }
+
+        foreach (XElement listItem in bag.Elements())
+        {
+            var propertyDictionary = new Dictionary<string, string>();
+
+            foreach (XElement layerProperty in listItem.Elements())
+            {
+                string propertyName = layerProperty.Name.LocalName;
+                string propertyValue = layerProperty.Value;
+
+                propertyDictionary.Add(propertyName, propertyValue);
+            }
+
+            string layerName;
+            bool hasName = propertyDictionary.TryGetValue(NamePropertyTag, out layerName);
+            if (hasName)
+            {
+                propertyDictionary.Remove(NamePropertyTag);
+                result.Add(layerName, propertyDictionary);
+            }
+        }
+
+        return result;
     }
 
     public static Texture2D GetTexture2DFromPsdLayer(IPsdLayer layer)
