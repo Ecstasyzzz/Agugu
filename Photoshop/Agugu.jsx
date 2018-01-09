@@ -50,6 +50,36 @@ function loadConfigFromXMP(config, xmp){
 	}
 } 
 
+function saveConfigToXMP(config, xmp){
+	xmp.deleteProperty(aguguXmpNamespace, xmpConfigRootTag);
+	xmp.setProperty(aguguXmpNamespace, xmpConfigRootTag, null, XMPConst.PROP_IS_STRUCT);
+	var layersRootPath = XMPUtils.composeStructFieldPath(aguguXmpNamespace, xmpConfigRootTag, 
+														 aguguXmpNamespace, xmpLayersRootTag);
+	xmp.setProperty(aguguXmpNamespace, layersRootPath, null, XMPConst.PROP_IS_ARRAY);
+	
+	var xmpLayerArrayIndex = 1;
+	for(var layerName in config){
+		var layerPath = XMPUtils.composeArrayItemPath(aguguXmpNamespace, layersRootPath, xmpLayerArrayIndex);
+		xmp.setProperty(aguguXmpNamespace, layerPath, null, XMPConst.PROP_IS_STRUCT);
+		var layerNamePath = XMPUtils.composeStructFieldPath(aguguXmpNamespace, layerPath,
+															aguguXmpNamespace, xmpLayerNameTag);
+		xmp.setProperty(aguguXmpNamespace, layerNamePath, layerName);
+		
+		var layerConfig = config[layerName];
+		for(var propertyName in layerConfig){
+			var propertyValue = layerConfig[propertyName];
+			
+			var propertyPath = XMPUtils.composeStructFieldPath(aguguXmpNamespace, layerPath,
+															   aguguXmpNamespace, propertyName);
+			xmp.setProperty(aguguXmpNamespace, propertyPath, propertyValue);
+		}
+		
+		xmpLayerArrayIndex += 1;
+	}
+	
+	app.activeDocument.xmpMetadata.rawData = xmp.serialize();
+}
+
 function getLeafPropertyName(xmpPath, namespacePrefix){
 	var pathElements = xmpPath.split("/");
 	var pathElementsCount = pathElements.length;
@@ -179,6 +209,14 @@ for(var y = 0; y < yAnchorType.length; y++){
      }
 }
 
+
+
+mainWindow.optionGroup.serializePanel = mainWindow.optionGroup.add("panel", undefined, "Serialize");
+mainWindow.optionGroup.serializePanel.serializeButton = mainWindow.optionGroup.serializePanel
+														.add("button", undefined, "Serialize");
+mainWindow.optionGroup.serializePanel.serializeButton.onClick = function(){
+	saveConfigToXMP(config, xmp);
+}
 
 
 mainWindow.show();
