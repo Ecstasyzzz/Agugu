@@ -29,7 +29,7 @@ public class PSDImporter
         string selectedObjectPath = AssetDatabase.GetAssetPath(selectedObject);
 
         string fileExtension = Path.GetExtension(selectedObjectPath);
-        bool isPsdFile = string.Equals(fileExtension, ".psd", 
+        bool isPsdFile = string.Equals(fileExtension, ".psd",
                                        StringComparison.OrdinalIgnoreCase);
 
         if (!isPsdFile)
@@ -42,34 +42,84 @@ public class PSDImporter
         {
             var layersConfig = _ParseConfig(document);
 
-            string selectedObjectFolder = Path.GetDirectoryName(selectedObjectPath);
-            string outputPath = Path.Combine(selectedObjectFolder, "ImportedTextures");
-            Directory.CreateDirectory(outputPath);
+            string importedTexturesFolder = _GetImportedTexturesSaveFolder(selectedObjectPath);
+            _EnsureFolder(importedTexturesFolder);
 
-            var canvasGameObject = new GameObject("Canvas", typeof(Canvas));
-            var canvasRectTransform = canvasGameObject.GetComponent<RectTransform>();
-            canvasRectTransform.sizeDelta = new Vector2(document.Width, document.Height);
+            var canvasGameObject = _CreateCanvasGameObject(document.Width, document.Height);
 
             foreach (IPsdLayer layer in document.Childs)
             {
-                Debug.Log("LayerName : " + layer.Name);
                 Texture2D texture = GetTexture2DFromPsdLayer(layer);
 
-                string outputFilename = Path.Combine(outputPath, layer.Name + ".png");
-                File.WriteAllBytes(outputFilename, texture.EncodeToPNG());
+                string outputTextureFilename = string.Format("{0}.png", layer.Name);
+                string outputTexturePath = Path.Combine(importedTexturesFolder, outputTextureFilename);
+                File.WriteAllBytes(outputTexturePath, texture.EncodeToPNG());
+                AssetDatabase.Refresh();
+                Sprite importedSprite = AssetDatabase.LoadAssetAtPath<Sprite>(outputTexturePath);
 
-                var imageGameObject = new GameObject(layer.Name, typeof(Image));
-                var image = imageGameObject.GetComponent<Image>();
-                image.transform.SetParent(canvasGameObject.transform, worldPositionStays:false);
-                var imageRectTransform = image.GetComponent<RectTransform>();
-                imageRectTransform.position = new Vector3((layer.Left + layer.Right)/2, 
-                                document.Height - (layer.Bottom + layer.Top)/2, 0);
-                imageRectTransform.sizeDelta = new Vector2(layer.Width, layer.Height);
+                var uiGameObject = new GameObject(layer.Name);
+                var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
+                var image = uiGameObject.AddComponent<Image>();
+                image.sprite = importedSprite;
+                
+                var psdLayerCenter = new Vector2((layer.Left + layer.Right) / 2,
+                                                 (layer.Bottom + layer.Top) / 2);
+                uiRectTransform.sizeDelta = new Vector2(layer.Width, layer.Height);
+                uiRectTransform.localPosition = new Vector3(psdLayerCenter.x - document.Width / 2,
+                                                            document.Height - psdLayerCenter.y - document.Height / 2, 0);
 
-                image.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(outputFilename);
+                // Have to set localPosition before parenting
+                // Or the last imported layer will be reset to 0, 0, 0, I think it's a bug :(
+                uiGameObject.transform.SetParent(canvasGameObject.transform, worldPositionStays: false);
+
+                if (layersConfig.ContainsKey(layer.Name))
+                {
+                    var layerConfig = layersConfig[layer.Name];
+                    string widgetType;
+                    bool hasWidgetType = layerConfig.TryGetValue("widgetType", out widgetType);
+                    if (hasWidgetType && string.Equals(widgetType, "button"))
+                    {
+                        uiGameObject.AddComponent<Button>();
+                    }
+                }
             }
+
+            canvasGameObject.AddComponent<GenericView>();
         }
+
         AssetDatabase.Refresh();
+    }
+
+
+    private static GameObject _CreateCanvasGameObject(float width, float height)
+    {
+        var canvasGameObject = new GameObject("Canvas");
+
+        var canvas = canvasGameObject.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+
+        var canvasScaler = canvasGameObject.AddComponent<CanvasScaler>();
+        canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        canvasScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        canvasScaler.referenceResolution = new Vector2(width, height);
+        canvasScaler.matchWidthOrHeight = 0;
+
+        var graphicRaycaster = canvasGameObject.AddComponent<GraphicRaycaster>();
+
+        return canvasGameObject;
+    }
+
+    private static string _GetImportedTexturesSaveFolder(string psdPath)
+    {
+        string psdFolder = Path.GetDirectoryName(psdPath);
+        string importedTexturesFolder = Path.Combine(psdFolder, "ImportedTextures");
+
+        return importedTexturesFolder;
+    }
+
+    private static void _EnsureFolder(string folderPath)
+    {
+        Directory.CreateDirectory(folderPath);
     }
 
     private static Dictionary<string, Dictionary<string, string>> _ParseConfig(PsdDocument document)
@@ -136,7 +186,7 @@ public class PSDImporter
         int width = layer.Width;
         int height = layer.Height;
         int pixelCount = width * height;
-        
+
         var pixelArray = new Color32[pixelCount];
 
         // Unity texture coordinates start at lower left corner.
@@ -148,10 +198,10 @@ public class PSDImporter
                 int photoshopIndex = x + y * width;
                 int unityTextureIndex = x + (height - 1 - y) * width;
 
-                byte r = rChannel != null ? rChannel.Data[photoshopIndex] : (byte) 0;
-                byte g = gChannel != null ? gChannel.Data[photoshopIndex] : (byte) 0;
-                byte b = bChannel != null ? bChannel.Data[photoshopIndex] : (byte) 0;
-                byte a = aChannel != null ? aChannel.Data[photoshopIndex] : (byte) 255;
+                byte r = rChannel != null ? rChannel.Data[photoshopIndex] : (byte)0;
+                byte g = gChannel != null ? gChannel.Data[photoshopIndex] : (byte)0;
+                byte b = bChannel != null ? bChannel.Data[photoshopIndex] : (byte)0;
+                byte a = aChannel != null ? aChannel.Data[photoshopIndex] : (byte)255;
 
                 pixelArray[unityTextureIndex] = new Color32(r, g, b, a);
             }
