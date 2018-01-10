@@ -99,8 +99,16 @@ public class PSDImporter
             }
             
             PrefabUtility.ReplacePrefab(canvasGameObject, prefabObject, ReplacePrefabOptions.ReplaceNameBased);
-            var prefabGameObject = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-            PrefabUtility.ConnectGameObjectToPrefab(canvasGameObject, prefabGameObject);
+
+            if (keepGameObject)
+            {
+                var prefabGameObject = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+                PrefabUtility.ConnectGameObjectToPrefab(canvasGameObject, prefabGameObject);
+            }
+            else
+            {
+                GameObject.DestroyImmediate(canvasGameObject);
+            }
         }
     }
 
