@@ -52,41 +52,14 @@ public class PSDImporter
 
             var canvasGameObject = _CreateCanvasGameObject(document.Width, document.Height);
 
-            foreach (IPsdLayer layer in document.Childs)
+            foreach (PsdLayer child in document.Childs)
             {
-                Texture2D texture = GetTexture2DFromPsdLayer(layer);
-
-                string outputTextureFilename = string.Format("{0}.png", layer.Name);
-                string outputTexturePath = Path.Combine(importedTexturesFolder, outputTextureFilename);
-                File.WriteAllBytes(outputTexturePath, texture.EncodeToPNG());
-                AssetDatabase.Refresh();
-                Sprite importedSprite = AssetDatabase.LoadAssetAtPath<Sprite>(outputTexturePath);
-
-                var uiGameObject = new GameObject(layer.Name);
-                var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
-                var image = uiGameObject.AddComponent<Image>();
-                image.sprite = importedSprite;
-
-                var psdLayerCenter = new Vector2((layer.Left + layer.Right) / 2,
-                                                 (layer.Bottom + layer.Top) / 2);
-                uiRectTransform.sizeDelta = new Vector2(layer.Width, layer.Height);
-                uiRectTransform.localPosition = new Vector3(psdLayerCenter.x - document.Width / 2,
-                                                            document.Height - psdLayerCenter.y - document.Height / 2, 0);
-
-                // Have to set localPosition before parenting
-                // Or the last imported layer will be reset to 0, 0, 0, I think it's a bug :(
-                uiGameObject.transform.SetParent(canvasGameObject.transform, worldPositionStays: false);
-
-                if (layersConfig.ContainsKey(layer.Name))
-                {
-                    var layerConfig = layersConfig[layer.Name];
-                    string widgetType;
-                    bool hasWidgetType = layerConfig.TryGetValue("widgetType", out widgetType);
-                    if (hasWidgetType && string.Equals(widgetType, "button"))
-                    {
-                        uiGameObject.AddComponent<Button>();
-                    }
-                }
+                _ImportLayersRecursive
+                (
+                    child, canvasGameObject.transform,
+                    layersConfig, importedTexturesFolder,
+                    document.Width, document.Height
+                );
             }
 
             canvasGameObject.AddComponent<GenericView>();
@@ -108,6 +81,72 @@ public class PSDImporter
             else
             {
                 GameObject.DestroyImmediate(canvasGameObject);
+            }
+        }
+    }
+
+    private static void _ImportLayersRecursive
+    (
+        PsdLayer layerToImport, Transform parentTransform,
+        Dictionary<string, Dictionary<string, string>> layersConfig, 
+        string importedTexturesFolder,
+        int parentWidth, int parentHeight
+    )
+    {
+        if (!layerToImport.IsVisible) { return; }
+
+        string layerName = layerToImport.Name;
+        bool isGroup = 0 < layerToImport.Childs.Length;
+
+        if (isGroup)
+        {
+            var groupGameObject = new GameObject(layerName);
+            groupGameObject.AddComponent<RectTransform>();
+            groupGameObject.transform.SetParent(parentTransform, worldPositionStays: false);
+            foreach (PsdLayer childLayer in layerToImport.Childs)
+            {
+                _ImportLayersRecursive
+                (
+                    childLayer, groupGameObject.transform,
+                    layersConfig, importedTexturesFolder,
+                    parentWidth, parentHeight
+                );
+            }
+        }
+        else
+        {
+            Texture2D texture = GetTexture2DFromPsdLayer(layerToImport);
+
+            string outputTextureFilename = string.Format("{0}.png", layerName);
+            string outputTexturePath = Path.Combine(importedTexturesFolder, outputTextureFilename);
+            File.WriteAllBytes(outputTexturePath, texture.EncodeToPNG());
+            AssetDatabase.Refresh();
+            var importedSprite = AssetDatabase.LoadAssetAtPath<Sprite>(outputTexturePath);
+
+            var uiGameObject = new GameObject(layerName);
+            var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
+            var image = uiGameObject.AddComponent<Image>();
+            image.sprite = importedSprite;
+
+            var psdLayerCenter = new Vector2((layerToImport.Left + layerToImport.Right) / 2,
+                (layerToImport.Bottom + layerToImport.Top) / 2);
+            uiRectTransform.sizeDelta = new Vector2(layerToImport.Width, layerToImport.Height);
+            uiRectTransform.localPosition = new Vector3(psdLayerCenter.x - parentWidth / 2,
+                parentHeight - psdLayerCenter.y - parentHeight / 2, 0);
+
+            // Have to set localPosition before parenting
+            // Or the last imported layer will be reset to 0, 0, 0, I think it's a bug :(
+            uiGameObject.transform.SetParent(parentTransform, worldPositionStays: false);
+
+            if (layersConfig.ContainsKey(layerName))
+            {
+                var layerConfig = layersConfig[layerName];
+                string widgetType;
+                bool hasWidgetType = layerConfig.TryGetValue("widgetType", out widgetType);
+                if (hasWidgetType && string.Equals(widgetType, "button"))
+                {
+                    uiGameObject.AddComponent<Button>();
+                }
             }
         }
     }
