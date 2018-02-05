@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,6 +11,8 @@ using UnityEditor;
 
 using Ntreev.Library.Psd;
 using Ntreev.Library.Psd.Readers.ImageResources;
+using Ntreev.Library.Psd.Readers.LayerResources;
+using Ntreev.Library.Psd.Structures;
 
 
 public class PSDImporter
@@ -97,6 +100,7 @@ public class PSDImporter
 
         string layerName = layerToImport.Name;
         bool isGroup = _IsGroupLayer(layerToImport);
+        bool isText = _IsTextLayer(layerToImport);
 
         if (isGroup)
         {
@@ -113,6 +117,51 @@ public class PSDImporter
                 );
             }
         }
+        else if (isText)
+        {
+            Debug.Log(layerName + " is Text");
+            var engineData = (StructureEngineData)layerToImport.Resources["TySh.Text.EngineData"];
+
+            var engineDict = (Properties)engineData["EngineDict"];
+            var styleRun = (Properties)engineDict["StyleRun"];
+            var runArray = (ArrayList)styleRun["RunArray"];
+            var firstRunArrayElement = (Properties)runArray[0];
+            var firstStyleSheet = (Properties) firstRunArrayElement["StyleSheet"];
+            var firstStyelSheetData = (Properties)firstStyleSheet["StyleSheetData"];
+
+            var fontIndex = (int) firstStyelSheetData["Font"];
+            var fontSize = (float) firstStyelSheetData["FontSize"];
+            var fillColor = (Properties) firstStyelSheetData["FillColor"];
+            var fillColorValue = (ArrayList) fillColor["Values"];
+            //ARGB
+            var textColor = new Color((float)fillColorValue[1],
+                                      (float)fillColorValue[2],
+                                      (float)fillColorValue[3],
+                                      (float)fillColorValue[0]);
+
+            var documentResources = (Properties)engineData["DocumentResources"];
+            var fontSet = (ArrayList)documentResources["FontSet"];
+
+            var font = (Properties)fontSet[fontIndex];
+            var fontName = (string)font["Name"];
+            Font textFont = AguguFontLookup.Instance.GetFont(fontName);
+
+            foreach (var p in layerToImport.Resources)
+            {
+                Debug.Log(p.ToString());
+            }
+
+            var uiGameObject = new GameObject(layerName);
+            var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
+            var text = uiGameObject.AddComponent<Text>();
+            text.text = (string)layerToImport.Resources["TySh.Text.Txt"];
+            text.color = textColor;
+            text.font = textFont;
+            text.fontSize = (int)(fontSize / 2);
+
+            _SetRectTransformByLayer(uiRectTransform, layerToImport, parentWidth, parentHeight);
+            uiGameObject.transform.SetParent(parentTransform, worldPositionStays: false);
+        }
         else
         {
             Texture2D texture = GetTexture2DFromPsdLayer(layerToImport);
@@ -128,11 +177,7 @@ public class PSDImporter
             var image = uiGameObject.AddComponent<Image>();
             image.sprite = importedSprite;
 
-            var psdLayerCenter = new Vector2((layerToImport.Left + layerToImport.Right) / 2,
-                (layerToImport.Bottom + layerToImport.Top) / 2);
-            uiRectTransform.sizeDelta = new Vector2(layerToImport.Width, layerToImport.Height);
-            uiRectTransform.localPosition = new Vector3(psdLayerCenter.x - parentWidth / 2,
-                parentHeight - psdLayerCenter.y - parentHeight / 2, 0);
+            _SetRectTransformByLayer(uiRectTransform, layerToImport, parentWidth, parentHeight);
 
             // Have to set localPosition before parenting
             // Or the last imported layer will be reset to 0, 0, 0, I think it's a bug :(
@@ -154,7 +199,34 @@ public class PSDImporter
 
     private static bool _IsGroupLayer(PsdLayer psdLayer)
     {
-        return psdLayer.SectionType == SectionType.Opend || psdLayer.SectionType == SectionType.Closed;
+        return psdLayer.SectionType == SectionType.Opend || 
+               psdLayer.SectionType == SectionType.Closed;
+    }
+
+    private static bool _IsTextLayer(PsdLayer psdLayer)
+    {
+        return psdLayer.Resources.Contains("TySh");
+    }
+
+    private static void _SetRectTransformByLayer(RectTransform rectTransform, PsdLayer layer,
+        float parentWidth, float parentHeight)
+    {
+        float left = layer.Left;
+        float right = layer.Right;
+        float bottom = layer.Bottom;
+        float top = layer.Top;
+
+        float width = layer.Width;
+        float height = layer.Height;
+
+        var psdLayerCenter = new Vector2((left + right) / 2, (bottom + top) / 2);
+
+        rectTransform.sizeDelta = new Vector2(width, height);
+        rectTransform.localPosition = new Vector3
+        (
+            psdLayerCenter.x - parentWidth / 2,
+            parentHeight - psdLayerCenter.y - parentHeight / 2
+        );
     }
 
 
@@ -289,4 +361,3 @@ public class PSDImporter
         return outputTexture2D;
     }
 }
-
