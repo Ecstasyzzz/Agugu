@@ -96,7 +96,7 @@ public class PSDImporter
         if (!layerToImport.IsVisible) { return; }
 
         string layerName = layerToImport.Name;
-        bool isGroup = 0 < layerToImport.Childs.Length;
+        bool isGroup = _IsGroupLayer(layerToImport);
 
         if (isGroup)
         {
@@ -149,6 +149,12 @@ public class PSDImporter
                 }
             }
         }
+    }
+
+
+    private static bool _IsGroupLayer(PsdLayer psdLayer)
+    {
+        return psdLayer.SectionType == SectionType.Opend || psdLayer.SectionType == SectionType.Closed;
     }
 
 
