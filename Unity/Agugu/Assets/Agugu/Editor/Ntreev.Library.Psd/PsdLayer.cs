@@ -20,11 +20,8 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Runtime.CompilerServices;
 using System.Linq;
-using Ntreev.Library.Psd.Readers;
+
 using Ntreev.Library.Psd.Readers.LayerAndMaskInformation;
 
 namespace Ntreev.Library.Psd
