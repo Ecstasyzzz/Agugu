@@ -11,7 +11,6 @@ using UnityEditor;
 
 using Ntreev.Library.Psd;
 using Ntreev.Library.Psd.Readers.ImageResources;
-using Ntreev.Library.Psd.Readers.LayerResources;
 using Ntreev.Library.Psd.Structures;
 
 
@@ -49,7 +48,7 @@ public class PSDImporter
         using (var document = PsdDocument.Create(psdPath))
         {
             var layersConfig = _ParseConfig(document);
-
+            
             string importedTexturesFolder = _GetImportedTexturesSaveFolder(psdPath);
             _EnsureFolder(importedTexturesFolder);
 
@@ -71,7 +70,7 @@ public class PSDImporter
             var prefabObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(prefabPath);
             if (prefabObject == null)
             {
-                prefabObject = PrefabUtility.CreateEmptyPrefab("Assets/TestCase/01.prefab");
+                prefabObject = PrefabUtility.CreateEmptyPrefab(prefabPath);
             }
             
             PrefabUtility.ReplacePrefab(canvasGameObject, prefabObject, ReplacePrefabOptions.ReplaceNameBased);
