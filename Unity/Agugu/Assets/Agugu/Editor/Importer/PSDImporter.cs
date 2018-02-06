@@ -156,9 +156,14 @@ public class PSDImporter
             text.text = (string)layerToImport.Resources["TySh.Text.Txt"];
             text.color = textColor;
             text.font = textFont;
-            text.fontSize = (int)(fontSize / 2);
+            text.fontSize = (int)(fontSize / 1.3);
 
-            _SetRectTransformByLayer(uiRectTransform, layerToImport, parentWidth, parentHeight);
+            _SetRectTransform(uiRectTransform,
+                layerToImport.Left, layerToImport.Right,
+                layerToImport.Bottom, layerToImport.Top,
+                layerToImport.Width, layerToImport.Height * 1.3f,
+                parentWidth, parentHeight);
+
             uiGameObject.transform.SetParent(parentTransform, worldPositionStays: false);
         }
         else
@@ -176,7 +181,11 @@ public class PSDImporter
             var image = uiGameObject.AddComponent<Image>();
             image.sprite = importedSprite;
 
-            _SetRectTransformByLayer(uiRectTransform, layerToImport, parentWidth, parentHeight);
+            _SetRectTransform(uiRectTransform, 
+                              layerToImport.Left, layerToImport.Right,
+                              layerToImport.Bottom, layerToImport.Top,
+                              layerToImport.Width, layerToImport.Height,
+                              parentWidth, parentHeight);
 
             // Have to set localPosition before parenting
             // Or the last imported layer will be reset to 0, 0, 0, I think it's a bug :(
@@ -207,17 +216,15 @@ public class PSDImporter
         return psdLayer.Resources.Contains("TySh");
     }
 
-    private static void _SetRectTransformByLayer(RectTransform rectTransform, PsdLayer layer,
-        float parentWidth, float parentHeight)
+    private static void _SetRectTransform
+    (
+        RectTransform rectTransform,
+        float left, float right,
+        float bottom, float top,
+        float width, float height,
+        float parentWidth, float parentHeight
+    )
     {
-        float left = layer.Left;
-        float right = layer.Right;
-        float bottom = layer.Bottom;
-        float top = layer.Top;
-
-        float width = layer.Width;
-        float height = layer.Height;
-
         var psdLayerCenter = new Vector2((left + right) / 2, (bottom + top) / 2);
 
         rectTransform.sizeDelta = new Vector2(width, height);
