@@ -73,7 +73,7 @@ public class PSDImporter
                 prefabObject = PrefabUtility.CreateEmptyPrefab(prefabPath);
             }
             
-            PrefabUtility.ReplacePrefab(canvasGameObject, prefabObject, ReplacePrefabOptions.ReplaceNameBased);
+            PrefabUtility.ReplacePrefab(canvasGameObject, prefabObject, ReplacePrefabOptions.ConnectToPrefab);
 
             if (keepGameObject)
             {
