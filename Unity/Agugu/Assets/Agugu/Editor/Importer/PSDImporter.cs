@@ -153,7 +153,9 @@ public class PSDImporter
             text.text = (string)layerToImport.Resources["TySh.Text.Txt"];
             text.color = textColor;
             text.font = textFont;
+            // TODO: Wild guess, cannot find any reference about Unity font size
             text.fontSize = (int)(fontSize / 1.3);
+            text.resizeTextForBestFit = true;
 
            
 
