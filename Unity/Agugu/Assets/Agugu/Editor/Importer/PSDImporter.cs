@@ -16,13 +16,14 @@ using Ntreev.Library.Psd.Structures;
 
 public class PSDImporter
 {
-    private const string AguguNamespace = "http://www.agugu.org/";
-    private const string AguguNamespacePrefix = "agugu:";
+    private static readonly XNamespace _aguguNamespace = "http://www.agugu.org/";
+    private static readonly XNamespace _rdfNamespace = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
     private const string ConfigRootTag = "Config";
     private const string LayersRootTag = "Layers";
-    private const string BagTag = "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}Bag";
-    private const string NamePropertyTag = "Name";
+    private const string BagTag = "Bag";
+    private const string IdTag = "Id";
+    private const string PropertiesTag = "Properties";
 
     [MenuItem("Agugu/Import Selection")]
     public static void ImportSelection()
@@ -90,14 +91,16 @@ public class PSDImporter
     private static void _ImportLayersRecursive
     (
         PsdLayer layerToImport, Transform parentTransform,
-        Dictionary<string, Dictionary<string, string>> layersConfig, 
+        PsdLayerConfigs layerConfigs, 
         string importedTexturesFolder,
         int parentWidth, int parentHeight
     )
     {
         if (!layerToImport.IsVisible) { return; }
 
+        int layerId = (int)layerToImport.Resources["lyid.ID"];
         string layerName = layerToImport.Name;
+
         bool isGroup = _IsGroupLayer(layerToImport);
         bool isText = _IsTextLayer(layerToImport);
 
@@ -111,14 +114,13 @@ public class PSDImporter
                 _ImportLayersRecursive
                 (
                     childLayer, groupGameObject.transform,
-                    layersConfig, importedTexturesFolder,
+                    layerConfigs, importedTexturesFolder,
                     parentWidth, parentHeight
                 );
             }
         }
         else if (isText)
         {
-            Debug.Log(layerName + " is Text");
             var engineData = (StructureEngineData)layerToImport.Resources["TySh.Text.EngineData"];
 
             var engineDict = (Properties)engineData["EngineDict"];
@@ -145,11 +147,6 @@ public class PSDImporter
             var fontName = (string)font["Name"];
             Font textFont = AguguFontLookup.Instance.GetFont(fontName);
 
-            foreach (var p in layerToImport.Resources)
-            {
-                Debug.Log(p.ToString());
-            }
-
             var uiGameObject = new GameObject(layerName);
             var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
             var text = uiGameObject.AddComponent<Text>();
@@ -157,6 +154,8 @@ public class PSDImporter
             text.color = textColor;
             text.font = textFont;
             text.fontSize = (int)(fontSize / 1.3);
+
+           
 
             _SetRectTransform(uiRectTransform,
                 layerToImport.Left, layerToImport.Right,
@@ -191,9 +190,9 @@ public class PSDImporter
             // Or the last imported layer will be reset to 0, 0, 0, I think it's a bug :(
             uiGameObject.transform.SetParent(parentTransform, worldPositionStays: false);
 
-            if (layersConfig.ContainsKey(layerName))
+            if (layerConfigs.HasLayerConfig(layerId))
             {
-                var layerConfig = layersConfig[layerName];
+                var layerConfig = layerConfigs.GetLayerConfig(layerId);
                 string widgetType;
                 bool hasWidgetType = layerConfig.TryGetValue("widgetType", out widgetType);
                 if (hasWidgetType && string.Equals(widgetType, "button"))
@@ -275,39 +274,58 @@ public class PSDImporter
         Directory.CreateDirectory(folderPath);
     }
 
-    private static Dictionary<string, Dictionary<string, string>> _ParseConfig(PsdDocument document)
-    {
-        var result = new Dictionary<string, Dictionary<string, string>>();
 
+    private static PsdLayerConfigs _ParseConfig(PsdDocument document)
+    {
         IProperties imageResources = document.ImageResources;
         var xmpImageResource = imageResources["XmpMetadata"] as Reader_XmpMetadata;
         var xmpValue = xmpImageResource.Value["Xmp"] as string;
-        var xmp = XDocument.Parse(xmpValue);
 
-        XNamespace xnamespace = AguguNamespace;
-        XElement configRoot = xmp.Descendants(xnamespace + ConfigRootTag).FirstOrDefault();
+        return ParseXMP(xmpValue);
+    }
+
+    public static PsdLayerConfigs ParseXMP(string xmpString) 
+    {
+        var result = new PsdLayerConfigs();
+        var xmp = XDocument.Parse(xmpString);
+        
+        XElement configRoot = xmp.Descendants(_aguguNamespace + ConfigRootTag).FirstOrDefault();
         if (configRoot == null)
         {
             return result;
         }
 
-        XElement layersConfigRoot = configRoot.Descendants(xnamespace + LayersRootTag).FirstOrDefault();
+        XElement layersConfigRoot = configRoot.Descendants(_aguguNamespace + LayersRootTag).FirstOrDefault();
         if (layersConfigRoot == null)
         {
             return result;
         }
 
-        XElement bag = layersConfigRoot.Element(BagTag);
+        XElement bag = layersConfigRoot.Element(_rdfNamespace + BagTag);
         if (bag == null)
         {
             return result;
         }
 
-        foreach (XElement listItem in bag.Elements())
+        var layerItems = bag.Elements();
+        foreach (XElement listItem in layerItems)
         {
+            XElement idElement = listItem.Element(_aguguNamespace + IdTag);
+            if (idElement == null)
+            {
+                continue;
+            }
+
+            int layerId = Int32.Parse(idElement.Value);
             var propertyDictionary = new Dictionary<string, string>();
 
-            foreach (XElement layerProperty in listItem.Elements())
+            XElement propertiesRoot = listItem.Element(_aguguNamespace + PropertiesTag);
+            if (propertiesRoot == null)
+            {
+                continue;
+            }
+
+            foreach (XElement layerProperty in propertiesRoot.Elements())
             {
                 string propertyName = layerProperty.Name.LocalName;
                 string propertyValue = layerProperty.Value;
@@ -315,13 +333,7 @@ public class PSDImporter
                 propertyDictionary.Add(propertyName, propertyValue);
             }
 
-            string layerName;
-            bool hasName = propertyDictionary.TryGetValue(NamePropertyTag, out layerName);
-            if (hasName)
-            {
-                propertyDictionary.Remove(NamePropertyTag);
-                result.Add(layerName, propertyDictionary);
-            }
+            result.SetLayerConfig(layerId, propertyDictionary);
         }
 
         return result;
