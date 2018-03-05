@@ -11,6 +11,7 @@ using UnityEditor;
 
 using Ntreev.Library.Psd;
 using Ntreev.Library.Psd.Readers.ImageResources;
+using Ntreev.Library.Psd.Readers.LayerResources;
 using Ntreev.Library.Psd.Structures;
 
 
@@ -24,6 +25,53 @@ public class PSDImporter
     private const string BagTag = "Bag";
     private const string IdTag = "Id";
     private const string PropertiesTag = "Properties";
+
+    private const string XAnchorPropertyTag = "xAnchor";
+    private const string YAnchorPropertyTag = "yAnchor";
+    private const string WidgetTypePropertyTag = "widgetType";
+
+    private enum XAnchorType
+    {
+        None,
+        Left,
+        Center,
+        Right,
+        Stretch
+    }
+
+    private enum YAnchorType
+    {
+        None,
+        Top,
+        Center,
+        Bottom,
+        Stretch
+    }
+
+    private static XAnchorType _GetXAnchorType(string value)
+    {
+        switch (value)
+        {
+            case "left": return XAnchorType.Left;
+            case "center": return XAnchorType.Center;
+            case "right": return XAnchorType.Right;
+            case "stretch": return XAnchorType.Stretch;
+            default: return XAnchorType.None;
+        }
+    }
+
+    private static YAnchorType _GetYAnchorType(string value)
+    {
+        switch (value)
+        {
+            case "top": return YAnchorType.Top;
+            case "center": return YAnchorType.Center;
+            case "bottom": return YAnchorType.Bottom;
+            case "stretch": return YAnchorType.Stretch;
+            default: return YAnchorType.None;
+        }
+    }
+
 
     [MenuItem("Agugu/Import Selection")]
     public static void ImportSelection()
@@ -54,12 +102,14 @@ public class PSDImporter
             _EnsureFolder(importedTexturesFolder);
 
             var canvasGameObject = _CreateCanvasGameObject(document.Width, document.Height);
+            var canvasRectTransform = canvasGameObject.GetComponent<RectTransform>();
+            canvasRectTransform.ForceUpdateRectTransforms();
 
             foreach (PsdLayer child in document.Childs)
             {
                 _ImportLayersRecursive
                 (
-                    child, canvasGameObject.transform,
+                    child, canvasRectTransform,
                     layersConfig, importedTexturesFolder,
                     document.Width, document.Height
                 );
@@ -90,7 +140,8 @@ public class PSDImporter
 
     private static void _ImportLayersRecursive
     (
-        PsdLayer layerToImport, Transform parentTransform,
+        PsdLayer layerToImport, 
+        RectTransform parentRectTransform,
         PsdLayerConfigs layerConfigs, 
         string importedTexturesFolder,
         int parentWidth, int parentHeight
@@ -107,13 +158,13 @@ public class PSDImporter
         if (isGroup)
         {
             var groupGameObject = new GameObject(layerName);
-            groupGameObject.AddComponent<RectTransform>();
-            groupGameObject.transform.SetParent(parentTransform, worldPositionStays: false);
+            var groupRectTransform = groupGameObject.AddComponent<RectTransform>();
+            groupGameObject.transform.SetParent(parentRectTransform, worldPositionStays: false);
             foreach (PsdLayer childLayer in layerToImport.Childs)
             {
                 _ImportLayersRecursive
                 (
-                    childLayer, groupGameObject.transform,
+                    childLayer, groupRectTransform,
                     layerConfigs, importedTexturesFolder,
                     parentWidth, parentHeight
                 );
@@ -150,11 +201,13 @@ public class PSDImporter
             var uiGameObject = new GameObject(layerName);
             var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
             var text = uiGameObject.AddComponent<Text>();
+            var TySh = (Reader_TySh)layerToImport.Resources["TySh"];
             text.text = (string)layerToImport.Resources["TySh.Text.Txt"];
             text.color = textColor;
             text.font = textFont;
             // TODO: Wild guess, cannot find any reference about Unity font size
-            text.fontSize = (int)(fontSize / 1.3);
+            // 25/6
+            text.fontSize = (int)(fontSize / 4.16);
             text.resizeTextForBestFit = true;
 
            
@@ -165,7 +218,7 @@ public class PSDImporter
                 layerToImport.Width, layerToImport.Height * 1.3f,
                 parentWidth, parentHeight);
 
-            uiGameObject.transform.SetParent(parentTransform, worldPositionStays: false);
+            uiGameObject.transform.SetParent(parentRectTransform, worldPositionStays: false);
         }
         else
         {
@@ -190,16 +243,83 @@ public class PSDImporter
 
             // Have to set localPosition before parenting
             // Or the last imported layer will be reset to 0, 0, 0, I think it's a bug :(
-            uiGameObject.transform.SetParent(parentTransform, worldPositionStays: false);
+            uiGameObject.transform.SetParent(parentRectTransform, worldPositionStays: false);
 
             if (layerConfigs.HasLayerConfig(layerId))
             {
                 var layerConfig = layerConfigs.GetLayerConfig(layerId);
                 string widgetType;
-                bool hasWidgetType = layerConfig.TryGetValue("widgetType", out widgetType);
+                bool hasWidgetType = layerConfig.TryGetValue(WidgetTypePropertyTag, out widgetType);
                 if (hasWidgetType && string.Equals(widgetType, "button"))
                 {
                     uiGameObject.AddComponent<Button>();
+                }
+
+                string xAnchor;
+                bool hasXAnchor = layerConfig.TryGetValue(XAnchorPropertyTag, out xAnchor);
+                if (hasXAnchor)
+                {
+                    XAnchorType type = _GetXAnchorType(xAnchor);
+                    switch (type)
+                    {
+                        case XAnchorType.Left:
+                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetXOverwriteCopy(0);
+                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetXOverwriteCopy(0);
+                            uiRectTransform.anchoredPosition =
+                                uiRectTransform.anchoredPosition.GetXOverwriteCopy(uiRectTransform.sizeDelta.x * 0.5f);
+                            break;
+                        case XAnchorType.Center:
+                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetXOverwriteCopy(0.5f);
+                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetXOverwriteCopy(0.5f);
+                            break;
+                        case XAnchorType.Right:
+                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetXOverwriteCopy(1);
+                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetXOverwriteCopy(1);
+                            uiRectTransform.anchoredPosition =
+                                uiRectTransform.anchoredPosition.GetXOverwriteCopy(uiRectTransform.sizeDelta.x * -0.5f);
+                            break;
+                        case XAnchorType.Stretch:
+                            float size = uiRectTransform.sizeDelta.x;
+                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetXOverwriteCopy(0);
+                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetXOverwriteCopy(1);
+
+                            uiRectTransform.sizeDelta =
+                                uiRectTransform.sizeDelta.GetXOverwriteCopy(layerToImport.Width - parentWidth);
+                            break;
+                    }
+                }
+
+                string yAnchor;
+                bool hasYAnchor = layerConfig.TryGetValue(YAnchorPropertyTag, out yAnchor);
+                if (hasYAnchor)
+                {
+                    YAnchorType type = _GetYAnchorType(yAnchor);
+                    switch (type)
+                    {
+                        case YAnchorType.Bottom:
+                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetYOverwriteCopy(0);
+                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetYOverwriteCopy(0);
+                            uiRectTransform.anchoredPosition =
+                                uiRectTransform.anchoredPosition.GetYOverwriteCopy(uiRectTransform.sizeDelta.y * 0.5f);
+                            break;
+                        case YAnchorType.Center:
+                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetYOverwriteCopy(0.5f);
+                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetYOverwriteCopy(0.5f);
+                            break;
+                        case YAnchorType.Top:
+                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetYOverwriteCopy(1);
+                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetYOverwriteCopy(1);
+                            uiRectTransform.anchoredPosition =
+                                uiRectTransform.anchoredPosition.GetYOverwriteCopy(uiRectTransform.sizeDelta.y * -0.5f);
+                            break;
+                        case YAnchorType.Stretch:
+                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetYOverwriteCopy(0);
+                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetYOverwriteCopy(1);
+
+                            uiRectTransform.sizeDelta =
+                                uiRectTransform.sizeDelta.GetYOverwriteCopy(layerToImport.Height - parentHeight);
+                            break;
+                    }
                 }
             }
         }
