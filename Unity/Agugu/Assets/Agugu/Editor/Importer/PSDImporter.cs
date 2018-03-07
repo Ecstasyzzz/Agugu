@@ -1,19 +1,109 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
+using System.Collections;
+using System.Collections.Generic;
 
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEditor;
 
 using Ntreev.Library.Psd;
-using Ntreev.Library.Psd.Readers.ImageResources;
-using Ntreev.Library.Psd.Readers.LayerResources;
 using Ntreev.Library.Psd.Structures;
+using Ntreev.Library.Psd.Readers.ImageResources;
 
+
+public enum XAnchorType
+{
+    None,
+    Left,
+    Center,
+    Right,
+    Stretch
+}
+
+public enum YAnchorType
+{
+    None,
+    Bottom,
+    Center,
+    Top,
+    Stretch
+}
+
+public enum WidgetType
+{
+    None,
+    Button
+}
+
+
+public class UiNode
+{
+    public int Id;
+    public string Name;
+
+    public XAnchorType XAnchor;
+    public YAnchorType YAnchor;
+    public Rect Rect;
+
+    public virtual void Accept(IUiNodeVisitor visitor) { }
+}
+
+public class UiTreeRoot
+{
+    public float Width;
+    public float Height;
+
+    public PsdLayerConfigs Configs = new PsdLayerConfigs();
+    public List<UiNode> Children = new List<UiNode>();
+
+    public void AddChild(UiNode node)
+    {
+        Children.Add(node);
+    }
+}
+
+public class GroupNode : UiNode
+{
+    public List<UiNode> Children = new List<UiNode>();
+
+    public void AddChild(UiNode node)
+    {
+        Children.Add(node);
+    }
+
+    public override void Accept(IUiNodeVisitor visitor)
+    {
+        visitor.Visit(this);
+    }
+}
+
+public class ImageNode : UiNode
+{
+    public ISpriteSource SpriteSource;
+    public WidgetType WidgetType;
+
+    public override void Accept(IUiNodeVisitor visitor)
+    {
+        visitor.Visit(this);
+    }
+}
+
+public class TextNode : UiNode
+{
+    public float FontSize;
+    public string FontName;
+
+    public string Text;
+    public Color TextColor;
+
+    public override void Accept(IUiNodeVisitor visitor)
+    {
+        visitor.Visit(this);
+    }
+}
 
 public class PSDImporter
 {
@@ -30,23 +120,7 @@ public class PSDImporter
     private const string YAnchorPropertyTag = "yAnchor";
     private const string WidgetTypePropertyTag = "widgetType";
 
-    private enum XAnchorType
-    {
-        None,
-        Left,
-        Center,
-        Right,
-        Stretch
-    }
-
-    private enum YAnchorType
-    {
-        None,
-        Top,
-        Center,
-        Bottom,
-        Stretch
-    }
+    
 
     private static XAnchorType _GetXAnchorType(string value)
     {
@@ -94,47 +168,157 @@ public class PSDImporter
 
     public static void ImportPsdAsPrefab(string psdPath, bool keepGameObject)
     {
+        UiTreeRoot uiTree = _ParsePsd(psdPath);
+
+        string importedTexturesFolder = _GetImportedTexturesSaveFolder(psdPath);
+        _EnsureFolder(importedTexturesFolder);
+        var saveTextureVisitor = new SaveTextureVisitor(importedTexturesFolder);
+        saveTextureVisitor.Visit(uiTree);
+
+        var uguiVisitor = new BuildUguiGameObjectVisitor(default(Rect), null);
+        GameObject canvasGameObject = uguiVisitor.Visit(uiTree);
+
+        var prefabPath = _GetImportedPrefabSavePath(psdPath);
+        var prefabObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(prefabPath);
+        if (prefabObject == null)
+        {
+            prefabObject = PrefabUtility.CreateEmptyPrefab(prefabPath);
+        }
+
+        PrefabUtility.ReplacePrefab(canvasGameObject, prefabObject, ReplacePrefabOptions.ReplaceNameBased);
+
+        if (keepGameObject)
+        {
+            var prefabGameObject = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            PrefabUtility.ConnectGameObjectToPrefab(canvasGameObject, prefabGameObject);
+        }
+        else
+        {
+            GameObject.DestroyImmediate(canvasGameObject);
+        }
+    }
+
+    private static UiTreeRoot _ParsePsd(string psdPath)
+    {
         using (var document = PsdDocument.Create(psdPath))
         {
-            var layersConfig = _ParseConfig(document);
-            
-            string importedTexturesFolder = _GetImportedTexturesSaveFolder(psdPath);
-            _EnsureFolder(importedTexturesFolder);
+            var uiTree = new UiTreeRoot();
+            uiTree.Width = document.Width;
+            uiTree.Height = document.Height;
+            uiTree.Configs = _ParseConfig(document);
 
-            var canvasGameObject = _CreateCanvasGameObject(document.Width, document.Height);
-            var canvasRectTransform = canvasGameObject.GetComponent<RectTransform>();
-            canvasRectTransform.ForceUpdateRectTransforms();
-
-            foreach (PsdLayer child in document.Childs)
+            foreach (PsdLayer layer in document.Childs)
             {
-                _ImportLayersRecursive
-                (
-                    child, canvasRectTransform,
-                    layersConfig, importedTexturesFolder,
-                    document.Width, document.Height
-                );
+                uiTree.Children.Add(_ParsePsdLayerRecursive(uiTree, layer));
             }
 
-            canvasGameObject.AddComponent<GenericView>();
+            return uiTree;
+        }
+    }
 
-            var prefabPath = _GetImportedPrefabSavePath(psdPath);
-            var prefabObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(prefabPath);
-            if (prefabObject == null)
-            {
-                prefabObject = PrefabUtility.CreateEmptyPrefab(prefabPath);
-            }
-            
-            PrefabUtility.ReplacePrefab(canvasGameObject, prefabObject, ReplacePrefabOptions.ReplaceNameBased);
+    private static UiNode _ParsePsdLayerRecursive(UiTreeRoot tree, PsdLayer layer)
+    {
+        int id = (int)layer.Resources["lyid.ID"];
+        string name = layer.Name;
 
-            if (keepGameObject)
+        var config = tree.Configs.GetLayerConfig(id);
+        XAnchorType xAnchor = _GetXAnchorType(config.GetValueOrDefault(XAnchorPropertyTag));
+        YAnchorType yAnchor = _GetYAnchorType(config.GetValueOrDefault(YAnchorPropertyTag));
+        var rect = new Rect
+        {
+            xMin = layer.Left,
+            xMax = layer.Right,
+            yMin = tree.Height - layer.Bottom,
+            yMax = tree.Height - layer.Top
+        };
+
+        bool isGroup = _IsGroupLayer(layer);
+        bool isText = _IsTextLayer(layer);
+
+        if (isGroup)
+        {
+            var children = new List<UiNode>();
+
+            foreach (PsdLayer childlayer in layer.Childs)
             {
-                var prefabGameObject = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-                PrefabUtility.ConnectGameObjectToPrefab(canvasGameObject, prefabGameObject);
+                children.Add(_ParsePsdLayerRecursive(tree, childlayer));
             }
-            else
+
+            return new GroupNode
             {
-                GameObject.DestroyImmediate(canvasGameObject);
-            }
+                Id = id,
+                Name = name,
+
+                XAnchor = xAnchor,
+                YAnchor = yAnchor,
+                Rect = rect,
+
+                Children = children
+            };
+        }
+        else if (isText)
+        {
+            var engineData = (StructureEngineData)layer.Resources["TySh.Text.EngineData"];
+            var engineDict = (Properties)engineData["EngineDict"];
+            var styleRun = (Properties)engineDict["StyleRun"];
+            var runArray = (ArrayList)styleRun["RunArray"];
+            var firstRunArrayElement = (Properties)runArray[0];
+            var firstStyleSheet = (Properties)firstRunArrayElement["StyleSheet"];
+            var firstStyelSheetData = (Properties)firstStyleSheet["StyleSheetData"];
+
+            var fontIndex = (int)firstStyelSheetData["Font"];
+            // Font size could be omitted TODO: Find official default Value
+            var fontSize = firstStyelSheetData.Contains("FontSize") ? (float)firstStyelSheetData["FontSize"] : 42;
+            var fillColor = (Properties)firstStyelSheetData["FillColor"];
+            var fillColorValue = (ArrayList)fillColor["Values"];
+            //ARGB
+            var textColor = new Color((float)fillColorValue[1],
+                                      (float)fillColorValue[2],
+                                      (float)fillColorValue[3],
+                                      (float)fillColorValue[0]);
+
+            var documentResources = (Properties)engineData["DocumentResources"];
+            var fontSet = (ArrayList)documentResources["FontSet"];
+            var font = (Properties)fontSet[fontIndex];
+            var fontName = (string)font["Name"];
+
+            var text = (string)layer.Resources["TySh.Text.Txt"];
+
+            return new TextNode
+            {
+                Id = id,
+                Name = name,
+
+                XAnchor = xAnchor,
+                YAnchor = yAnchor,
+                Rect = rect,
+
+                FontSize = fontSize,
+                FontName = fontName,
+
+                Text = text,
+                TextColor = textColor
+            };
+        }
+        else
+        {
+            string widgetTypeString = config.GetValueOrDefault(WidgetTypePropertyTag);
+            WidgetType widgetType = string.Equals(widgetTypeString, "button") ? WidgetType.Button : WidgetType.None;
+
+            Texture2D texture2D = GetTexture2DFromPsdLayer(layer);
+
+            return new ImageNode
+            {
+                Id = id,
+                Name = name,
+
+                XAnchor = xAnchor,
+                YAnchor = yAnchor,
+                Rect = rect,
+
+                WidgetType = widgetType,
+                SpriteSource = new InMemoryTextureSpriteSource{Texture2D = texture2D}
+            };
         }
     }
 
@@ -144,7 +328,8 @@ public class PSDImporter
         RectTransform parentRectTransform,
         PsdLayerConfigs layerConfigs, 
         string importedTexturesFolder,
-        int parentWidth, int parentHeight
+        int parentWidth, 
+        int parentHeight
     )
     {
         if (!layerToImport.IsVisible) { return; }
@@ -157,9 +342,40 @@ public class PSDImporter
 
         if (isGroup)
         {
-            var groupGameObject = new GameObject(layerName);
-            var groupRectTransform = groupGameObject.AddComponent<RectTransform>();
-            groupGameObject.transform.SetParent(parentRectTransform, worldPositionStays: false);
+            
+
+            /*if (layerConfigs.HasLayerConfig(layerId))
+            {
+                var layerConfig = layerConfigs.GetLayerConfig(layerId);
+
+                Rect rect = Rect.MinMaxRect(float.MaxValue, float.MaxValue, float.MinValue, float.MinValue);
+                foreach (PsdLayer childLayer in layerToImport.Childs)
+                {
+                    rect = _GetBoundingRectRecursive(rect, childLayer);
+                }
+
+                
+
+                Vector3[] parentWorldCorners = new Vector3[4];
+                parentRectTransform.GetWorldCorners(parentWorldCorners);
+
+                Vector3 parentBottomLeft = parentWorldCorners[0];
+                Vector3 parentTopRight = parentWorldCorners[2];
+                Vector2 anchorMinWorldPosition = new Vector2(
+                        Mathf.LerpUnclamped(parentBottomLeft.x, parentTopRight.x, groupRectTransform.anchorMin.x),
+                        Mathf.LerpUnclamped(parentBottomLeft.y, parentTopRight.y, groupRectTransform.anchorMin.y)
+                    );
+                Vector2 anchorMaxWorldPosition = new Vector2(
+                    Mathf.LerpUnclamped(parentBottomLeft.x, parentTopRight.x, groupRectTransform.anchorMax.x),
+                    Mathf.LerpUnclamped(parentBottomLeft.y, parentTopRight.y, groupRectTransform.anchorMax.y)
+                    );
+                Vector2 pivotAnchor = new Vector2(
+                    Mathf.LerpUnclamped(anchorMinWorldPosition.x, anchorMaxWorldPosition.x, groupRectTransform.pivot.x),
+                    Mathf.LerpUnclamped(anchorMinWorldPosition.y, anchorMaxWorldPosition.y, groupRectTransform.pivot.y)
+                );
+                groupRectTransform.anchoredPosition = rect.center - pivotAnchor;
+            }
+
             foreach (PsdLayer childLayer in layerToImport.Childs)
             {
                 _ImportLayersRecursive
@@ -168,35 +384,12 @@ public class PSDImporter
                     layerConfigs, importedTexturesFolder,
                     parentWidth, parentHeight
                 );
-            }
+            }*/
         }
         else if (isText)
         {
-            var engineData = (StructureEngineData)layerToImport.Resources["TySh.Text.EngineData"];
-
-            var engineDict = (Properties)engineData["EngineDict"];
-            var styleRun = (Properties)engineDict["StyleRun"];
-            var runArray = (ArrayList)styleRun["RunArray"];
-            var firstRunArrayElement = (Properties)runArray[0];
-            var firstStyleSheet = (Properties) firstRunArrayElement["StyleSheet"];
-            var firstStyelSheetData = (Properties)firstStyleSheet["StyleSheetData"];
-
-            var fontIndex = (int) firstStyelSheetData["Font"];
-            var fontSize = (float) firstStyelSheetData["FontSize"];
-            var fillColor = (Properties) firstStyelSheetData["FillColor"];
-            var fillColorValue = (ArrayList) fillColor["Values"];
-            //ARGB
-            var textColor = new Color((float)fillColorValue[1],
-                                      (float)fillColorValue[2],
-                                      (float)fillColorValue[3],
-                                      (float)fillColorValue[0]);
-
-            var documentResources = (Properties)engineData["DocumentResources"];
-            var fontSet = (ArrayList)documentResources["FontSet"];
-
-            var font = (Properties)fontSet[fontIndex];
-            var fontName = (string)font["Name"];
-            Font textFont = AguguFontLookup.Instance.GetFont(fontName);
+            
+            /*Font textFont = AguguFontLookup.Instance.GetFont(fontName);
 
             var uiGameObject = new GameObject(layerName);
             var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
@@ -218,7 +411,7 @@ public class PSDImporter
                 layerToImport.Width, layerToImport.Height * 1.3f,
                 parentWidth, parentHeight);
 
-            uiGameObject.transform.SetParent(parentRectTransform, worldPositionStays: false);
+            uiGameObject.transform.SetParent(parentRectTransform, worldPositionStays: false);*/
         }
         else
         {
@@ -228,103 +421,29 @@ public class PSDImporter
             string outputTexturePath = Path.Combine(importedTexturesFolder, outputTextureFilename);
             File.WriteAllBytes(outputTexturePath, texture.EncodeToPNG());
             AssetDatabase.Refresh();
-            var importedSprite = AssetDatabase.LoadAssetAtPath<Sprite>(outputTexturePath);
+            
 
-            var uiGameObject = new GameObject(layerName);
-            var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
-            var image = uiGameObject.AddComponent<Image>();
-            image.sprite = importedSprite;
-
-            _SetRectTransform(uiRectTransform, 
-                              layerToImport.Left, layerToImport.Right,
-                              layerToImport.Bottom, layerToImport.Top,
-                              layerToImport.Width, layerToImport.Height,
-                              parentWidth, parentHeight);
-
-            // Have to set localPosition before parenting
-            // Or the last imported layer will be reset to 0, 0, 0, I think it's a bug :(
-            uiGameObject.transform.SetParent(parentRectTransform, worldPositionStays: false);
-
-            if (layerConfigs.HasLayerConfig(layerId))
-            {
-                var layerConfig = layerConfigs.GetLayerConfig(layerId);
-                string widgetType;
-                bool hasWidgetType = layerConfig.TryGetValue(WidgetTypePropertyTag, out widgetType);
-                if (hasWidgetType && string.Equals(widgetType, "button"))
-                {
-                    uiGameObject.AddComponent<Button>();
-                }
-
-                string xAnchor;
-                bool hasXAnchor = layerConfig.TryGetValue(XAnchorPropertyTag, out xAnchor);
-                if (hasXAnchor)
-                {
-                    XAnchorType type = _GetXAnchorType(xAnchor);
-                    switch (type)
-                    {
-                        case XAnchorType.Left:
-                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetXOverwriteCopy(0);
-                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetXOverwriteCopy(0);
-                            uiRectTransform.anchoredPosition =
-                                uiRectTransform.anchoredPosition.GetXOverwriteCopy(uiRectTransform.sizeDelta.x * 0.5f);
-                            break;
-                        case XAnchorType.Center:
-                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetXOverwriteCopy(0.5f);
-                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetXOverwriteCopy(0.5f);
-                            break;
-                        case XAnchorType.Right:
-                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetXOverwriteCopy(1);
-                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetXOverwriteCopy(1);
-                            uiRectTransform.anchoredPosition =
-                                uiRectTransform.anchoredPosition.GetXOverwriteCopy(uiRectTransform.sizeDelta.x * -0.5f);
-                            break;
-                        case XAnchorType.Stretch:
-                            float size = uiRectTransform.sizeDelta.x;
-                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetXOverwriteCopy(0);
-                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetXOverwriteCopy(1);
-
-                            uiRectTransform.sizeDelta =
-                                uiRectTransform.sizeDelta.GetXOverwriteCopy(layerToImport.Width - parentWidth);
-                            break;
-                    }
-                }
-
-                string yAnchor;
-                bool hasYAnchor = layerConfig.TryGetValue(YAnchorPropertyTag, out yAnchor);
-                if (hasYAnchor)
-                {
-                    YAnchorType type = _GetYAnchorType(yAnchor);
-                    switch (type)
-                    {
-                        case YAnchorType.Bottom:
-                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetYOverwriteCopy(0);
-                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetYOverwriteCopy(0);
-                            uiRectTransform.anchoredPosition =
-                                uiRectTransform.anchoredPosition.GetYOverwriteCopy(uiRectTransform.sizeDelta.y * 0.5f);
-                            break;
-                        case YAnchorType.Center:
-                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetYOverwriteCopy(0.5f);
-                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetYOverwriteCopy(0.5f);
-                            break;
-                        case YAnchorType.Top:
-                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetYOverwriteCopy(1);
-                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetYOverwriteCopy(1);
-                            uiRectTransform.anchoredPosition =
-                                uiRectTransform.anchoredPosition.GetYOverwriteCopy(uiRectTransform.sizeDelta.y * -0.5f);
-                            break;
-                        case YAnchorType.Stretch:
-                            uiRectTransform.anchorMin = uiRectTransform.anchorMin.GetYOverwriteCopy(0);
-                            uiRectTransform.anchorMax = uiRectTransform.anchorMax.GetYOverwriteCopy(1);
-
-                            uiRectTransform.sizeDelta =
-                                uiRectTransform.sizeDelta.GetYOverwriteCopy(layerToImport.Height - parentHeight);
-                            break;
-                    }
-                }
-            }
+            
         }
     }
 
+
+    private static Rect _GetBoundingRectRecursive
+        (Rect boundingRect, PsdLayer layerToBound)
+    {
+        boundingRect.xMin = Mathf.Min(boundingRect.xMin, layerToBound.Left);
+        boundingRect.xMax = Mathf.Max(boundingRect.xMax, layerToBound.Right);
+
+        boundingRect.yMin = Mathf.Min(boundingRect.yMin, layerToBound.Document.Height - layerToBound.Bottom);
+        boundingRect.yMax = Mathf.Max(boundingRect.yMax, layerToBound.Document.Height - layerToBound.Top);
+
+        foreach (PsdLayer childLayer in layerToBound.Childs)
+        {
+            boundingRect = _GetBoundingRectRecursive(boundingRect, childLayer);
+        }
+
+        return boundingRect;
+    }
 
     private static bool _IsGroupLayer(PsdLayer psdLayer)
     {
@@ -337,43 +456,10 @@ public class PSDImporter
         return psdLayer.Resources.Contains("TySh");
     }
 
-    private static void _SetRectTransform
-    (
-        RectTransform rectTransform,
-        float left, float right,
-        float bottom, float top,
-        float width, float height,
-        float parentWidth, float parentHeight
-    )
-    {
-        var psdLayerCenter = new Vector2((left + right) / 2, (bottom + top) / 2);
-
-        rectTransform.sizeDelta = new Vector2(width, height);
-        rectTransform.localPosition = new Vector3
-        (
-            psdLayerCenter.x - parentWidth / 2,
-            parentHeight - psdLayerCenter.y - parentHeight / 2
-        );
-    }
+    
 
 
-    private static GameObject _CreateCanvasGameObject(float width, float height)
-    {
-        var canvasGameObject = new GameObject("Canvas");
-
-        var canvas = canvasGameObject.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-
-        var canvasScaler = canvasGameObject.AddComponent<CanvasScaler>();
-        canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        canvasScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        canvasScaler.referenceResolution = new Vector2(width, height);
-        canvasScaler.matchWidthOrHeight = 0;
-
-        var graphicRaycaster = canvasGameObject.AddComponent<GraphicRaycaster>();
-
-        return canvasGameObject;
-    }
+    
 
     private static string _GetImportedTexturesSaveFolder(string psdPath)
     {

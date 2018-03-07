@@ -19,6 +19,6 @@ public class PsdLayerConfigs
     {
         Dictionary<string, string> config;
         bool hasConfig = _layerConfigs.TryGetValue(id, out config);
-        return hasConfig ? config : null;
+        return hasConfig ? config : new Dictionary<string, string>();
     }
 }
