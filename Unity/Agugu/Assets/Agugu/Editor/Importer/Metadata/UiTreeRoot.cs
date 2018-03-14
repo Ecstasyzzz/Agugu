@@ -1,0 +1,15 @@
+﻿using System.Collections.Generic;
+
+public class UiTreeRoot
+{
+    public float Width;
+    public float Height;
+
+    public PsdLayerConfigs Configs = new PsdLayerConfigs();
+    public List<UiNode> Children = new List<UiNode>();
+
+    public void AddChild(UiNode node)
+    {
+        Children.Add(node);
+    }
+}

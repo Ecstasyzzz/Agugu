@@ -11,4 +11,10 @@ public static class Vector2Extension
     {
         return new Vector2(target.x, y);
     }
+
+    public static Vector2 LerpUnclamped(Vector2 a, Vector2 b, Vector2 t)
+    {
+        return new Vector2(Mathf.LerpUnclamped(a.x, b.x, t.x),
+                           Mathf.LerpUnclamped(a.y, b.y, t.y));
+    }
 }

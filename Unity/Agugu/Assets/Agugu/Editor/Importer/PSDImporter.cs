@@ -6,7 +6,6 @@ using System.Collections;
 using System.Collections.Generic;
 
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEditor;
 
 using Ntreev.Library.Psd;
@@ -39,71 +38,6 @@ public enum WidgetType
 }
 
 
-public class UiNode
-{
-    public int Id;
-    public string Name;
-
-    public XAnchorType XAnchor;
-    public YAnchorType YAnchor;
-    public Rect Rect;
-
-    public virtual void Accept(IUiNodeVisitor visitor) { }
-}
-
-public class UiTreeRoot
-{
-    public float Width;
-    public float Height;
-
-    public PsdLayerConfigs Configs = new PsdLayerConfigs();
-    public List<UiNode> Children = new List<UiNode>();
-
-    public void AddChild(UiNode node)
-    {
-        Children.Add(node);
-    }
-}
-
-public class GroupNode : UiNode
-{
-    public List<UiNode> Children = new List<UiNode>();
-
-    public void AddChild(UiNode node)
-    {
-        Children.Add(node);
-    }
-
-    public override void Accept(IUiNodeVisitor visitor)
-    {
-        visitor.Visit(this);
-    }
-}
-
-public class ImageNode : UiNode
-{
-    public ISpriteSource SpriteSource;
-    public WidgetType WidgetType;
-
-    public override void Accept(IUiNodeVisitor visitor)
-    {
-        visitor.Visit(this);
-    }
-}
-
-public class TextNode : UiNode
-{
-    public float FontSize;
-    public string FontName;
-
-    public string Text;
-    public Color TextColor;
-
-    public override void Accept(IUiNodeVisitor visitor)
-    {
-        visitor.Visit(this);
-    }
-}
 
 public class PSDImporter
 {
@@ -319,111 +253,6 @@ public class PSDImporter
                 WidgetType = widgetType,
                 SpriteSource = new InMemoryTextureSpriteSource{Texture2D = texture2D}
             };
-        }
-    }
-
-    private static void _ImportLayersRecursive
-    (
-        PsdLayer layerToImport, 
-        RectTransform parentRectTransform,
-        PsdLayerConfigs layerConfigs, 
-        string importedTexturesFolder,
-        int parentWidth, 
-        int parentHeight
-    )
-    {
-        if (!layerToImport.IsVisible) { return; }
-
-        int layerId = (int)layerToImport.Resources["lyid.ID"];
-        string layerName = layerToImport.Name;
-
-        bool isGroup = _IsGroupLayer(layerToImport);
-        bool isText = _IsTextLayer(layerToImport);
-
-        if (isGroup)
-        {
-            
-
-            /*if (layerConfigs.HasLayerConfig(layerId))
-            {
-                var layerConfig = layerConfigs.GetLayerConfig(layerId);
-
-                Rect rect = Rect.MinMaxRect(float.MaxValue, float.MaxValue, float.MinValue, float.MinValue);
-                foreach (PsdLayer childLayer in layerToImport.Childs)
-                {
-                    rect = _GetBoundingRectRecursive(rect, childLayer);
-                }
-
-                
-
-                Vector3[] parentWorldCorners = new Vector3[4];
-                parentRectTransform.GetWorldCorners(parentWorldCorners);
-
-                Vector3 parentBottomLeft = parentWorldCorners[0];
-                Vector3 parentTopRight = parentWorldCorners[2];
-                Vector2 anchorMinWorldPosition = new Vector2(
-                        Mathf.LerpUnclamped(parentBottomLeft.x, parentTopRight.x, groupRectTransform.anchorMin.x),
-                        Mathf.LerpUnclamped(parentBottomLeft.y, parentTopRight.y, groupRectTransform.anchorMin.y)
-                    );
-                Vector2 anchorMaxWorldPosition = new Vector2(
-                    Mathf.LerpUnclamped(parentBottomLeft.x, parentTopRight.x, groupRectTransform.anchorMax.x),
-                    Mathf.LerpUnclamped(parentBottomLeft.y, parentTopRight.y, groupRectTransform.anchorMax.y)
-                    );
-                Vector2 pivotAnchor = new Vector2(
-                    Mathf.LerpUnclamped(anchorMinWorldPosition.x, anchorMaxWorldPosition.x, groupRectTransform.pivot.x),
-                    Mathf.LerpUnclamped(anchorMinWorldPosition.y, anchorMaxWorldPosition.y, groupRectTransform.pivot.y)
-                );
-                groupRectTransform.anchoredPosition = rect.center - pivotAnchor;
-            }
-
-            foreach (PsdLayer childLayer in layerToImport.Childs)
-            {
-                _ImportLayersRecursive
-                (
-                    childLayer, groupRectTransform,
-                    layerConfigs, importedTexturesFolder,
-                    parentWidth, parentHeight
-                );
-            }*/
-        }
-        else if (isText)
-        {
-            
-            /*Font textFont = AguguFontLookup.Instance.GetFont(fontName);
-
-            var uiGameObject = new GameObject(layerName);
-            var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
-            var text = uiGameObject.AddComponent<Text>();
-            var TySh = (Reader_TySh)layerToImport.Resources["TySh"];
-            text.text = (string)layerToImport.Resources["TySh.Text.Txt"];
-            text.color = textColor;
-            text.font = textFont;
-            // TODO: Wild guess, cannot find any reference about Unity font size
-            // 25/6
-            text.fontSize = (int)(fontSize / 4.16);
-            text.resizeTextForBestFit = true;
-
-           
-
-            _SetRectTransform(uiRectTransform,
-                layerToImport.Left, layerToImport.Right,
-                layerToImport.Bottom, layerToImport.Top,
-                layerToImport.Width, layerToImport.Height * 1.3f,
-                parentWidth, parentHeight);
-
-            uiGameObject.transform.SetParent(parentRectTransform, worldPositionStays: false);*/
-        }
-        else
-        {
-            Texture2D texture = GetTexture2DFromPsdLayer(layerToImport);
-
-            string outputTextureFilename = string.Format("{0}.png", layerName);
-            string outputTexturePath = Path.Combine(importedTexturesFolder, outputTextureFilename);
-            File.WriteAllBytes(outputTexturePath, texture.EncodeToPNG());
-            AssetDatabase.Refresh();
-            
-
-            
         }
     }
 
