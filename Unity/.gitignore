@@ -32,3 +32,5 @@ sysinfo.txt
 
 # Visual Studio
 .vs/
+
+TestCase/
