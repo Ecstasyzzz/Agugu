@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 
+
 public class BuildUguiGameObjectVisitor : IUiNodeVisitor
 {
     private readonly Rect _parentRect;
@@ -46,6 +47,8 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
 
     public void Visit(GroupNode node)
     {
+        if (!node.IsVisible) { return; }
+
         var groupGameObject = new GameObject(node.Name);
         var groupRectTransform = groupGameObject.AddComponent<RectTransform>();
         groupGameObject.transform.SetParent(_parent, worldPositionStays: false);
@@ -64,6 +67,8 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
 
     public void Visit(TextNode node)
     {
+        if (!node.IsVisible) { return; }
+
         var uiGameObject = new GameObject(node.Name);
         var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
 
@@ -89,6 +94,8 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
 
     public void Visit(ImageNode node)
     {
+        if (!node.IsVisible) { return; }
+
         var importedSprite = node.SpriteSource.GetSprite();
 
         var uiGameObject = new GameObject(node.Name);

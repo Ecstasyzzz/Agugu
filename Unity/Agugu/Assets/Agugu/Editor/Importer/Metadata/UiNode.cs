@@ -7,6 +7,7 @@ public class UiNode
 {
     public int Id;
     public string Name;
+    public bool IsVisible;
 
     public XAnchorType XAnchor;
     public YAnchorType YAnchor;
