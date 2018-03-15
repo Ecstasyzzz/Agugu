@@ -16,12 +16,11 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
     public GameObject Visit(UiTreeRoot root)
     {
         var canvasGameObject = _CreateCanvasGameObject(root.Width, root.Height);
-        canvasGameObject.AddComponent<GenericView>();
-
         var canvasRectTransform = canvasGameObject.GetComponent<RectTransform>();
         canvasRectTransform.ForceUpdateRectTransforms();
 
-        var childrenVisitor = new BuildUguiGameObjectVisitor(new Rect(0,0,root.Width,root.Height), canvasRectTransform);
+        var canvasBaseRect = new Rect(0, 0, root.Width, root.Height);
+        var childrenVisitor = new BuildUguiGameObjectVisitor(canvasBaseRect, canvasRectTransform);
         root.Children.ForEach(child => child.Accept(childrenVisitor));
 
         return canvasGameObject;
