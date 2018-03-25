@@ -158,6 +158,19 @@ function createAnchorButtonCallback(xAnchor, yAnchor){
     }
 }
 
+function createSkipLayerCallback(isSkipped){
+    return function(){
+        var selectedLayerListItem = mainWindow.layerGroup.layerList.selection;
+        if(selectedLayerListItem == undefined){ return; }
+        
+        var selectedLayerId = selectedLayerListItem.layerId;
+        
+        setLayerConfig(config, selectedLayerId, 'isSkipped', isSkipped);
+        
+        updateLayerStatusLabel(selectedLayerId);
+    }
+}
+
 function updateLayerStatusLabel(selectedLayerId){
     mainWindow.optionGroup.currentSelectedLayerNameText.text = getLayerStatusText(selectedLayerId);
 }
@@ -247,11 +260,15 @@ for(var y = 0; y < yAnchorType.length; y++){
      }
 }
 
+mainWindow.optionGroup.skipPanel = mainWindow.optionGroup.add("panel", undefined, "Skip");
+mainWindow.optionGroup.skipPanel.skipButton = mainWindow.optionGroup.skipPanel.add("button", undefined, "Skip");
+mainWindow.optionGroup.skipPanel.skipButton.onClick = createSkipLayerCallback(true);
+mainWindow.optionGroup.skipPanel.unskipButton = mainWindow.optionGroup.skipPanel.add("button", undefined, "Unskip");
+mainWindow.optionGroup.skipPanel.unskipButton.onClick = createSkipLayerCallback(false);
 
 
 mainWindow.optionGroup.serializePanel = mainWindow.optionGroup.add("panel", undefined, "Serialize");
-mainWindow.optionGroup.serializePanel.serializeButton = mainWindow.optionGroup.serializePanel
-                                                                                                      .add("button", undefined, "Serialize");
+mainWindow.optionGroup.serializePanel.serializeButton = mainWindow.optionGroup.serializePanel.add("button", undefined, "Serialize");
 mainWindow.optionGroup.serializePanel.serializeButton.onClick = function(){
     saveConfigToXMP(config, xmp);
 }

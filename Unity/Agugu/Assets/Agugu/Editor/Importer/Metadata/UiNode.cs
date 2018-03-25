@@ -8,6 +8,7 @@ public class UiNode
     public int Id;
     public string Name;
     public bool IsVisible;
+    public bool IsSkipped;
 
     public XAnchorType XAnchor;
     public YAnchorType YAnchor;

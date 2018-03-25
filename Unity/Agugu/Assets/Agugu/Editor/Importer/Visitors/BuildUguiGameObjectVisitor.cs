@@ -46,7 +46,7 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
 
     public void Visit(GroupNode node)
     {
-        if (!node.IsVisible) { return; }
+        if (node.IsSkipped) { return; }
 
         var groupGameObject = new GameObject(node.Name);
         var groupRectTransform = groupGameObject.AddComponent<RectTransform>();
@@ -62,11 +62,13 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
 
         var childrenVisitor = new BuildUguiGameObjectVisitor(node.Rect, groupRectTransform);
         node.Children.ForEach(child => child.Accept(childrenVisitor));
+
+        groupGameObject.SetActive(node.IsVisible);
     }
 
     public void Visit(TextNode node)
     {
-        if (!node.IsVisible) { return; }
+        if (node.IsSkipped) { return; }
 
         var uiGameObject = new GameObject(node.Name);
         var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
@@ -89,11 +91,12 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
         );
 
         uiGameObject.transform.SetParent(_parent, worldPositionStays: false);
+        uiGameObject.SetActive(node.IsVisible);
     }
 
     public void Visit(ImageNode node)
     {
-        if (!node.IsVisible) { return; }
+        if (node.IsSkipped) { return; }
 
         var importedSprite = node.SpriteSource.GetSprite();
 
@@ -118,6 +121,7 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
         {
             uiGameObject.AddComponent<Button>();
         }
+        uiGameObject.SetActive(node.IsVisible);
     }
 
     private Vector2 _GetAnchorMin(UiNode node)

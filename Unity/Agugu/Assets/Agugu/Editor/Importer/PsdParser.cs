@@ -50,6 +50,8 @@ public class PsdParser
     private const string YAnchorPropertyTag = "yAnchor";
     private const string WidgetTypePropertyTag = "widgetType";
 
+    private const string IsSkippedPropertyTag = "isSkipped";
+
 
     public static UiTreeRoot Parse(string psdPath)
     {
@@ -140,6 +142,7 @@ public class PsdParser
         bool isVisible = layer.IsVisible;
 
         var config = tree.Configs.GetLayerConfig(id);
+        bool isSkipped = string.Equals(config.GetValueOrDefault(IsSkippedPropertyTag), "true", StringComparison.OrdinalIgnoreCase);
         XAnchorType xAnchor = _GetXAnchorType(config.GetValueOrDefault(XAnchorPropertyTag));
         YAnchorType yAnchor = _GetYAnchorType(config.GetValueOrDefault(YAnchorPropertyTag));
         var rect = new Rect
@@ -167,6 +170,7 @@ public class PsdParser
                 Id = id,
                 Name = name,
                 IsVisible = isVisible,
+                IsSkipped = isSkipped,
 
                 XAnchor = xAnchor,
                 YAnchor = yAnchor,
@@ -208,6 +212,7 @@ public class PsdParser
                 Id = id,
                 Name = name,
                 IsVisible = isVisible,
+                IsSkipped = isSkipped,
 
                 XAnchor = xAnchor,
                 YAnchor = yAnchor,
@@ -232,6 +237,7 @@ public class PsdParser
                 Id = id,
                 Name = name,
                 IsVisible = isVisible,
+                IsSkipped = isSkipped,
 
                 XAnchor = xAnchor,
                 YAnchor = yAnchor,
