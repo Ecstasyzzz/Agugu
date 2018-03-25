@@ -7,10 +7,12 @@ using UnityEditor;
 public class SaveTextureVisitor : IUiNodeVisitor
 {
     private readonly string _basePath;
+    private readonly string _prefix;
 
-    public SaveTextureVisitor(string basePath)
+    public SaveTextureVisitor(string basePath, string prefix = "")
     {
         _basePath = basePath;
+        _prefix = prefix;
     }
 
     public void Visit(UiTreeRoot root)
@@ -20,7 +22,7 @@ public class SaveTextureVisitor : IUiNodeVisitor
 
     public void Visit(GroupNode node)
     {
-        node.Children.ForEach(child => child.Accept(this));
+        node.Children.ForEach(child => child.Accept(new SaveTextureVisitor(_basePath, _prefix + node.Name)));
     }
 
     public void Visit(TextNode node) { }
@@ -31,7 +33,7 @@ public class SaveTextureVisitor : IUiNodeVisitor
         {
             var inMemoryTexture = (InMemoryTextureSpriteSource) node.SpriteSource;
 
-            string outputTextureFilename = string.Format("{0}.png", node.Name);
+            string outputTextureFilename = string.Format(_prefix + "{0}.png", node.Name);
             string outputTexturePath = Path.Combine(_basePath, outputTextureFilename);
 
             File.WriteAllBytes(outputTexturePath, inMemoryTexture.Texture2D.EncodeToPNG());
