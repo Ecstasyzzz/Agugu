@@ -22,14 +22,18 @@ public class SaveTextureVisitor : IUiNodeVisitor
 
     public void Visit(GroupNode node)
     {
-        node.Children.ForEach(child => child.Accept(new SaveTextureVisitor(_basePath, _prefix + node.Name)));
+        if (!node.IsSkipped)
+        {
+            node.Children.ForEach(child => child.Accept(new SaveTextureVisitor(_basePath, _prefix + node.Name)));
+        }
     }
 
     public void Visit(TextNode node) { }
 
     public void Visit(ImageNode node)
     {
-        if (node.SpriteSource is InMemoryTextureSpriteSource)
+        if (!node.IsSkipped &&
+             node.SpriteSource is InMemoryTextureSpriteSource)
         {
             var inMemoryTexture = (InMemoryTextureSpriteSource) node.SpriteSource;
 
