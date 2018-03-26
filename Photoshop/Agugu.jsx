@@ -171,6 +171,21 @@ function createSkipLayerCallback(isSkipped){
     }
 }
 
+function createScrollRectCallback(horizontalCheckbox, verticalCheckbox){
+    return function(){
+        var selectedLayerListItem = mainWindow.layerGroup.layerList.selection;
+        if(selectedLayerListItem == undefined){ return; }
+        
+        var selectedLayerId = selectedLayerListItem.layerId;
+        
+        setLayerConfig(config, selectedLayerId, 'hasScrollRect', true);
+        setLayerConfig(config, selectedLayerId, 'isScrollRectHorizontal', horizontalCheckbox.value);
+        setLayerConfig(config, selectedLayerId, 'isScrollRectVertical', verticalCheckbox.value);
+        
+        updateLayerStatusLabel(selectedLayerId);
+    }
+}
+
 function updateLayerStatusLabel(selectedLayerId){
     mainWindow.optionGroup.currentSelectedLayerNameText.text = getLayerStatusText(selectedLayerId);
 }
@@ -272,6 +287,15 @@ mainWindow.optionGroup.serializePanel.serializeButton = mainWindow.optionGroup.s
 mainWindow.optionGroup.serializePanel.serializeButton.onClick = function(){
     saveConfigToXMP(config, xmp);
 }
+
+mainWindow.optionGroup.scrollRectPanel = mainWindow.optionGroup.add("panel", undefined, "ScrollRect");
+mainWindow.optionGroup.scrollRectPanel.horizontalCheckbox = mainWindow.optionGroup.scrollRectPanel.add ("checkbox", undefined, "Horizontal");
+mainWindow.optionGroup.scrollRectPanel.verticalCheckbox = mainWindow.optionGroup.scrollRectPanel.add ("checkbox", undefined, "Vertical");
+mainWindow.optionGroup.scrollRectPanel.AddScrollRectButton = mainWindow.optionGroup.scrollRectPanel.add("button", undefined, "Add Scroll Rect");
+mainWindow.optionGroup.scrollRectPanel.AddScrollRectButton.onClick= createScrollRectCallback(
+    mainWindow.optionGroup.scrollRectPanel.horizontalCheckbox,
+    mainWindow.optionGroup.scrollRectPanel.verticalCheckbox
+);
 
 
 mainWindow.show();

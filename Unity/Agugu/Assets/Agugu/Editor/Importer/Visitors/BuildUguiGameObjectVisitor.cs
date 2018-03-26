@@ -60,8 +60,40 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
             new Vector2(0.5f, 0.5f)
         );
 
-        var childrenVisitor = new BuildUguiGameObjectVisitor(node.Rect, groupRectTransform);
-        node.Children.ForEach(child => child.Accept(childrenVisitor));
+        if (node.HasScrollRect)
+        {
+            var scrollRect = groupGameObject.AddComponent<ScrollRect>();
+            scrollRect.horizontal = node.IsScrollRectHorizontal;
+            scrollRect.vertical = node.IsScrollRectVertical;
+
+            string containerGameObjectName = node.Name + "Container";
+            var containerGameObject = new GameObject(containerGameObjectName);
+            var containerRectTransform = containerGameObject.AddComponent<RectTransform>();
+            containerGameObject.transform.SetParent(groupRectTransform, worldPositionStays: false);
+
+            scrollRect.content = containerRectTransform;
+
+            groupGameObject.AddComponent<Image>();
+
+            var mask = groupGameObject.AddComponent<Mask>();
+            mask.showMaskGraphic = false;
+
+            _SetRectTransform
+            (
+                containerRectTransform,
+                node.Rect, node.Rect,
+                _GetAnchorMin(node), _GetAnchorMax(node),
+                new Vector2(0.5f, 0.5f)
+            );
+
+            var childrenVisitor = new BuildUguiGameObjectVisitor(node.Rect, containerRectTransform);
+            node.Children.ForEach(child => child.Accept(childrenVisitor));
+        }
+        else
+        {
+            var childrenVisitor = new BuildUguiGameObjectVisitor(node.Rect, groupRectTransform);
+            node.Children.ForEach(child => child.Accept(childrenVisitor));
+        }
 
         groupGameObject.SetActive(node.IsVisible);
     }

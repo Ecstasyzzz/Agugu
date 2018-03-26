@@ -52,6 +52,9 @@ public class PsdParser
 
     private const string IsSkippedPropertyTag = "isSkipped";
 
+    private const string HasScrollRectPropertyTag = "hasScrollRect";
+    private const string IsScrollRectHorizontalPropertyTag = "isScrollRectHorizontal";
+    private const string IsScrollRectVerticalPropertyTag = "isScrollRectVertical";
 
     public static UiTreeRoot Parse(string psdPath)
     {
@@ -142,7 +145,7 @@ public class PsdParser
         bool isVisible = layer.IsVisible;
 
         var config = tree.Configs.GetLayerConfig(id);
-        bool isSkipped = string.Equals(config.GetValueOrDefault(IsSkippedPropertyTag), "true", StringComparison.OrdinalIgnoreCase);
+        bool isSkipped = _GetLayerConfigAsBool(config, IsSkippedPropertyTag);
         XAnchorType xAnchor = _GetXAnchorType(config.GetValueOrDefault(XAnchorPropertyTag));
         YAnchorType yAnchor = _GetYAnchorType(config.GetValueOrDefault(YAnchorPropertyTag));
         var rect = new Rect
@@ -156,8 +159,24 @@ public class PsdParser
         bool isGroup = _IsGroupLayer(layer);
         bool isText = _IsTextLayer(layer);
 
+        var baseUiNode = new UiNode
+        {
+            Id = id,
+            Name = name,
+            IsVisible = isVisible,
+            IsSkipped = isSkipped,
+
+            XAnchor = xAnchor,
+            YAnchor = yAnchor,
+            Rect = rect
+        };
+
         if (isGroup)
         {
+            bool hasScrollRect = _GetLayerConfigAsBool(config, HasScrollRectPropertyTag);
+            bool isScrollRectHorizontal = _GetLayerConfigAsBool(config, IsScrollRectHorizontalPropertyTag);
+            bool isScrollRectVertical = _GetLayerConfigAsBool(config, IsScrollRectVerticalPropertyTag);
+
             var children = new List<UiNode>();
 
             foreach (PsdLayer childlayer in layer.Childs)
@@ -165,16 +184,11 @@ public class PsdParser
                 children.Add(_ParsePsdLayerRecursive(tree, childlayer));
             }
 
-            return new GroupNode
+            return new GroupNode(baseUiNode)
             {
-                Id = id,
-                Name = name,
-                IsVisible = isVisible,
-                IsSkipped = isSkipped,
-
-                XAnchor = xAnchor,
-                YAnchor = yAnchor,
-                Rect = rect,
+                HasScrollRect = hasScrollRect,
+                IsScrollRectHorizontal = isScrollRectHorizontal,
+                IsScrollRectVertical = isScrollRectVertical,
 
                 Children = children
             };
@@ -207,17 +221,8 @@ public class PsdParser
 
             var text = (string)layer.Resources["TySh.Text.Txt"];
 
-            return new TextNode
+            return new TextNode(baseUiNode)
             {
-                Id = id,
-                Name = name,
-                IsVisible = isVisible,
-                IsSkipped = isSkipped,
-
-                XAnchor = xAnchor,
-                YAnchor = yAnchor,
-                Rect = rect,
-
                 FontSize = fontSize,
                 FontName = fontName,
 
@@ -232,21 +237,18 @@ public class PsdParser
 
             Texture2D texture2D = GetTexture2DFromPsdLayer(layer);
 
-            return new ImageNode
+            return new ImageNode(baseUiNode)
             {
-                Id = id,
-                Name = name,
-                IsVisible = isVisible,
-                IsSkipped = isSkipped,
-
-                XAnchor = xAnchor,
-                YAnchor = yAnchor,
-                Rect = rect,
-
                 WidgetType = widgetType,
                 SpriteSource = new InMemoryTextureSpriteSource { Texture2D = texture2D }
             };
         }
+    }
+
+    private static bool _GetLayerConfigAsBool(Dictionary<string, string> layerConfig, string tag)
+    {
+        string tagValue = layerConfig.GetValueOrDefault(tag);
+        return string.Equals(tagValue, "true", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool _IsGroupLayer(PsdLayer psdLayer)
