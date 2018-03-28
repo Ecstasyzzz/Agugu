@@ -127,6 +127,27 @@ function saveConfigToXMP(config, xmp){
 
 
 // UI Panel
+function appendLayerList(appendTarget){
+    var layerListBox = appendTarget.add("ListBox{}");
+    
+    var allLayerInfos = getAllLayerInfos(activeDocument);
+    for(layerId in allLayerInfos)
+    {
+        var layerInfo = allLayerInfos[layerId];
+        var listItem = layerListBox.add ("item", layerInfo.name + " " + layerInfo.id);
+        listItem.layerId = layerInfo.id;
+    }
+    
+    layerListBox.onChange = function(){
+        var selectedLayerListItem = layerListBox.selection;
+        if(selectedLayerListItem == undefined){ return; }
+        
+        var selectedLayerId = selectedLayerListItem.layerId;
+        updateLayerStatusLabel(selectedLayerId);
+    }
+}
+
+
 function appendSkipPanel(appendTarget){
     var skipPanel = appendTarget.add(
         "Panel{\
@@ -347,31 +368,14 @@ loadConfigFromXMP(config, xmp);
 
 
 // Build Window
-var mainWindow = new Window ("palette", "Agugu");
-mainWindow.orientation = "row";
-isDone = false;
-
-mainWindow.frameLocation = [400,160];
-mainWindow.layerGroup = mainWindow.add("group");
-mainWindow.layerGroup.layerList = mainWindow.layerGroup.add ("listbox", [0, 0, 150, 250]);
-
-var allLayerInfos = getAllLayerInfos(activeDocument);
-for(layerId in allLayerInfos)
-{
-    var layerInfo = allLayerInfos[layerId];
-    var listItem = mainWindow.layerGroup.layerList.add ("item", layerInfo.name + " " + layerInfo.id);
-    listItem.layerId = layerInfo.id;
-}
-mainWindow.layerGroup.layerList.onChange = function(){
-    var selectedLayerListItem = mainWindow.layerGroup.layerList.selection;
-    if(selectedLayerListItem == undefined){ return; }
-    
-    var selectedLayerId = selectedLayerListItem.layerId;
-    updateLayerStatusLabel(selectedLayerId  );
-}
-
-mainWindow.optionGroup = mainWindow.add(
-    "Group{\
+var mainWindow = new Window (
+"palette {\
+    text: 'Agugu',\
+    orientation: 'row',\
+    frameLocation: [400,160],\
+    \
+    layerGroup: Group{},\
+    optionGroup: Group{\
         orientation: 'column',\
         \
         currentSelectedLayerNameText: StaticText{\
@@ -379,8 +383,11 @@ mainWindow.optionGroup = mainWindow.add(
             bounds: [0, 0, 400, 100]\
             properties: { multiline: true }\
         }\
-    }"
-);
+    }\
+}");
+
+
+appendLayerList(mainWindow.layerGroup);
 
 appendSkipPanel(mainWindow.optionGroup);
 appendWidgetPanel(mainWindow.optionGroup);
@@ -392,6 +399,8 @@ appendSerializePanel(mainWindow.optionGroup);
 
 
 // Start main event loop
+isDone = false;
+
 mainWindow.onClose = function() {
   return isDone = true;
 };
