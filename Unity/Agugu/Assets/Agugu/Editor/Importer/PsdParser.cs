@@ -56,6 +56,12 @@ public class PsdParser
     private const string IsScrollRectHorizontalPropertyTag = "isScrollRectHorizontal";
     private const string IsScrollRectVerticalPropertyTag = "isScrollRectVertical";
 
+    private const string HasGridPropertyTag = "hasGrid";
+    private const string GridCellSizeXPropertyTag = "gridCellSizeX";
+    private const string GridCellSizeYPropertyTag = "gridCellSizeY";
+    private const string GridSpacingXPropertyTag = "gridSpacingX";
+    private const string GridSpacingYPropertyTag = "gridSpacingY";
+
     public static UiTreeRoot Parse(string psdPath)
     {
         using (var document = PsdDocument.Create(psdPath))
@@ -177,6 +183,21 @@ public class PsdParser
             bool isScrollRectHorizontal = _GetLayerConfigAsBool(config, IsScrollRectHorizontalPropertyTag);
             bool isScrollRectVertical = _GetLayerConfigAsBool(config, IsScrollRectVerticalPropertyTag);
 
+            bool hasGrid = _GetLayerConfigAsBool(config, HasGridPropertyTag);
+            Vector2 gridCellSize = Vector2.zero;
+            Vector2 gridSpacing = Vector2.zero;
+            
+            if (hasGrid)
+            {
+                float gridCellSizeX = _GetLayerConfigAsFloat(config, GridCellSizeXPropertyTag);
+                float gridCellSizeY = _GetLayerConfigAsFloat(config, GridCellSizeYPropertyTag);
+                float gridSpacingX = _GetLayerConfigAsFloat(config, GridSpacingXPropertyTag);
+                float gridSpacingY = _GetLayerConfigAsFloat(config, GridSpacingYPropertyTag);
+
+                gridCellSize = new Vector2(gridCellSizeX, gridCellSizeY);
+                gridSpacing = new Vector2(gridSpacingX, gridSpacingY);
+            }
+
             var children = new List<UiNode>();
 
             foreach (PsdLayer childlayer in layer.Childs)
@@ -189,6 +210,10 @@ public class PsdParser
                 HasScrollRect = hasScrollRect,
                 IsScrollRectHorizontal = isScrollRectHorizontal,
                 IsScrollRectVertical = isScrollRectVertical,
+
+                HasGrid = hasGrid,
+                CellSize = gridCellSize,
+                Spacing = gridSpacing,
 
                 Children = children
             };
@@ -249,6 +274,12 @@ public class PsdParser
     {
         string tagValue = layerConfig.GetValueOrDefault(tag);
         return string.Equals(tagValue, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static float _GetLayerConfigAsFloat(Dictionary<string, string> layerConfig, string tag)
+    {
+        string tagValue = layerConfig.GetValueOrDefault(tag);
+        return float.Parse(tagValue);
     }
 
     private static bool _IsGroupLayer(PsdLayer psdLayer)

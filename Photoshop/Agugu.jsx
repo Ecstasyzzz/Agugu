@@ -126,9 +126,53 @@ function saveConfigToXMP(config, xmp){
 }
 
 
+// UI Panel
+function appendSkipPanel(appendTarget){
+    var skipPanel = appendTarget.add(
+        "Panel{\
+            text: 'Skip',\
+            orientation: 'row',\
+            \
+            skipButton: Button{ text: 'Skip' },\
+            unskipButton: Button{ text: 'Unskip'}\
+        }"
+    );
+    
+    skipPanel.skipButton.onClick = createSkipLayerCallback(true);
+    skipPanel.unskipButton.onClick = createSkipLayerCallback(false);
+}
+
+function createSkipLayerCallback(isSkipped){
+    return function(){
+        var selectedLayerListItem = mainWindow.layerGroup.layerList.selection;
+        if(selectedLayerListItem == undefined){ return; }
+        
+        var selectedLayerId = selectedLayerListItem.layerId;
+        
+        setLayerConfig(config, selectedLayerId, 'isSkipped', isSkipped);
+        
+        updateLayerStatusLabel(selectedLayerId);
+    }
+}
+
 
 // Widget Type
-const widgetType = ['image', 'button', 'text']
+const widgetType = ['image', 'button', 'text'];
+function appendWidgetPanel(appendTarget){
+    var widgetTypePanel = appendTarget.add(
+        "Panel{\
+            text: 'Widget',\
+            orientation: 'row'\
+        }"
+    );
+
+    for(var w = 0; w< widgetType.length; w++){
+        var widget = widgetType[w];
+        var widgetButton = widgetTypePanel.add("button", undefined, widget);
+        widgetButton.onClick = createWidgetButtonCallback(widget);
+    }
+}
+
 function createWidgetButtonCallback(widgetType){
     return function(){
         var selectedLayerListItem = mainWindow.layerGroup.layerList.selection;
@@ -141,9 +185,26 @@ function createWidgetButtonCallback(widgetType){
     }
 }
 
+
 // Anchor Type
-const xAnchorType = ['left', 'center', 'right', 'stretch']
-const yAnchorType = ['top', 'center', 'bottom', 'stretch']
+const xAnchorType = ['left', 'center', 'right', 'stretch'];
+const yAnchorType = ['top', 'center', 'bottom', 'stretch'];
+function appendAnchorPanel(appendTarget){
+    var anchorPanel = appendTarget.add("panel", undefined, "Anchor");
+
+    for(var y = 0; y < yAnchorType.length; y++){
+        var yAnchor = yAnchorType[y];
+        
+        var horizontalGroup = anchorPanel.add('group');
+        for(var x = 0; x < xAnchorType.length; x++){
+            var xAnchor = xAnchorType[x];
+            
+            var anchorButton = horizontalGroup.add("button", undefined, xAnchor + " - " + yAnchor);
+            anchorButton.onClick = createAnchorButtonCallback(xAnchor, yAnchor)
+         }
+    }
+}
+
 function createAnchorButtonCallback(xAnchor, yAnchor){
     return function(){
         var selectedLayerListItem = mainWindow.layerGroup.layerList.selection;
@@ -158,17 +219,24 @@ function createAnchorButtonCallback(xAnchor, yAnchor){
     }
 }
 
-function createSkipLayerCallback(isSkipped){
-    return function(){
-        var selectedLayerListItem = mainWindow.layerGroup.layerList.selection;
-        if(selectedLayerListItem == undefined){ return; }
-        
-        var selectedLayerId = selectedLayerListItem.layerId;
-        
-        setLayerConfig(config, selectedLayerId, 'isSkipped', isSkipped);
-        
-        updateLayerStatusLabel(selectedLayerId);
-    }
+
+function appendScrollRectPanel(appendTarget){
+    var scrollRectPanel = appendTarget.add(
+        "Panel{\
+            text: 'ScrollRect',\
+            orientation: 'row',\
+            \
+            horizontalCheckbox: Checkbox{ text: 'Horizontal' },\
+            verticalCheckbox: Checkbox{ text: 'Vertical' },\
+            \
+            addScrollRectButton: Button{ text: 'Add Scroll Rect'}\
+        }"
+    );
+
+    scrollRectPanel.addScrollRectButton.onClick = createScrollRectCallback(
+        scrollRectPanel.horizontalCheckbox,
+        scrollRectPanel.verticalCheckbox
+    );
 }
 
 function createScrollRectCallback(horizontalCheckbox, verticalCheckbox){
@@ -185,6 +253,69 @@ function createScrollRectCallback(horizontalCheckbox, verticalCheckbox){
         updateLayerStatusLabel(selectedLayerId);
     }
 }
+
+
+function appendGridPanel(appendTarget){
+    var gridPanel = appendTarget.add(
+        "Panel{\
+                text: 'Grid',\
+                orientation: 'row',\
+                cellSizeXLabel: StaticText { text: 'Cell Size X' },\
+                cellSizeXText: EditText { text: '100' },\
+                \
+                cellSizeYLabel: StaticText { text: 'Cell Size Y' },\
+                cellSizeYText: EditText { text: '100' },\
+                \
+                spacingXLabel: StaticText { text: 'Spacing X' },\
+                spacingXText: EditText { text: '0' },\
+                \
+                spacingYLabel: StaticText { text: 'Spacing Y' },\
+                spacingYText: EditText { text: '0' },\
+                \
+                addGridButton: Button {text: 'Add Grid'}\
+        }"
+    );
+
+    gridPanel.addGridButton.onClick = createGridCallback(
+        gridPanel.cellSizeXText,
+        gridPanel.cellSizeYText,
+        gridPanel.spacingXText,
+        gridPanel.spacingYText
+    );
+}
+
+function createGridCallback(cellSizeXText, cellSizeYText, spacingXText, spacingYText){
+    return function(){
+        var selectedLayerListItem = mainWindow.layerGroup.layerList.selection;
+        if(selectedLayerListItem == undefined){ return; }
+        
+        var selectedLayerId = selectedLayerListItem.layerId;
+        
+        setLayerConfig(config, selectedLayerId, 'hasGrid', true);
+        setLayerConfig(config, selectedLayerId, 'gridCellSizeX', cellSizeXText.text);
+        setLayerConfig(config, selectedLayerId, 'gridCellSizeY', cellSizeYText.text);
+        setLayerConfig(config, selectedLayerId, 'gridSpacingX', spacingXText.text);
+        setLayerConfig(config, selectedLayerId, 'gridSpacingY', spacingYText.text);
+        
+        updateLayerStatusLabel(selectedLayerId);
+    }
+}
+
+
+function appendSerializePanel(appendTarget){
+    var serializePanel = appendTarget.add(
+        "Panel{\
+            text: 'Serialize',\
+            \
+            serializeButton: Button { text: 'Serialize' }\
+        }"
+    );
+
+    serializePanel.serializeButton.onClick = function(){
+        saveConfigToXMP(config, xmp);
+    };
+}
+
 
 function updateLayerStatusLabel(selectedLayerId){
     mainWindow.optionGroup.currentSelectedLayerNameText.text = getLayerStatusText(selectedLayerId);
@@ -204,11 +335,6 @@ function getLayerStatusText(selectedLayerId) {
 }
 
 
-
-
-
-
-
 // Load XMPMeta reference
 if(ExternalObject.AdobeXMPScript == undefined) {
     ExternalObject.AdobeXMPScript = new ExternalObject('lib:AdobeXMPScript');
@@ -219,8 +345,11 @@ XMPMeta.registerNamespace(aguguXmpNamespace, aguguNamespacePrefix);
 
 loadConfigFromXMP(config, xmp);
 
+
+// Build Window
 var mainWindow = new Window ("palette", "Agugu");
 mainWindow.orientation = "row";
+isDone = false;
 
 mainWindow.frameLocation = [400,160];
 mainWindow.layerGroup = mainWindow.add("group");
@@ -241,65 +370,42 @@ mainWindow.layerGroup.layerList.onChange = function(){
     updateLayerStatusLabel(selectedLayerId  );
 }
 
-
-
-mainWindow.optionGroup = mainWindow.add("group");
-mainWindow.optionGroup.orientation = "column";
-mainWindow.optionGroup.currentSelectedLayerNameText = 
-mainWindow.optionGroup.add ('statictext',  [0, 0, 400, 100], 'Select', {multiline: true});
-
-    
-    
-mainWindow.optionGroup.widgetTypePanel = mainWindow.optionGroup.add("panel", undefined, "UI Type");
-mainWindow.optionGroup.widgetTypePanel.orientation = "row";
-
-for(var w = 0; w< widgetType.length; w++){
-    var widget = widgetType[w];
-    var widgetButton = mainWindow.optionGroup.widgetTypePanel.add("button", undefined, widget);
-    widgetButton.onClick = createWidgetButtonCallback(widget);
-}
-
-
-
-mainWindow.optionGroup.anchorPanel = mainWindow.optionGroup.add("panel", undefined, "Anchor");
-
-for(var y = 0; y < yAnchorType.length; y++){
-    var yAnchor = yAnchorType[y];
-    
-    var horizontalGroup = mainWindow.optionGroup.anchorPanel.add('group');
-    for(var x = 0; x < xAnchorType.length; x++){
-        var xAnchor = xAnchorType[x];
-        
-        var anchorButton = horizontalGroup.add("button", undefined, xAnchor + " - " + yAnchor);
-        anchorButton.onClick =createAnchorButtonCallback(xAnchor, yAnchor)
-     }
-}
-
-mainWindow.optionGroup.skipPanel = mainWindow.optionGroup.add("panel", undefined, "Skip");
-mainWindow.optionGroup.skipPanel.skipButton = mainWindow.optionGroup.skipPanel.add("button", undefined, "Skip");
-mainWindow.optionGroup.skipPanel.skipButton.onClick = createSkipLayerCallback(true);
-mainWindow.optionGroup.skipPanel.unskipButton = mainWindow.optionGroup.skipPanel.add("button", undefined, "Unskip");
-mainWindow.optionGroup.skipPanel.unskipButton.onClick = createSkipLayerCallback(false);
-
-
-mainWindow.optionGroup.serializePanel = mainWindow.optionGroup.add("panel", undefined, "Serialize");
-mainWindow.optionGroup.serializePanel.serializeButton = mainWindow.optionGroup.serializePanel.add("button", undefined, "Serialize");
-mainWindow.optionGroup.serializePanel.serializeButton.onClick = function(){
-    saveConfigToXMP(config, xmp);
-}
-
-mainWindow.optionGroup.scrollRectPanel = mainWindow.optionGroup.add("panel", undefined, "ScrollRect");
-mainWindow.optionGroup.scrollRectPanel.horizontalCheckbox = mainWindow.optionGroup.scrollRectPanel.add ("checkbox", undefined, "Horizontal");
-mainWindow.optionGroup.scrollRectPanel.verticalCheckbox = mainWindow.optionGroup.scrollRectPanel.add ("checkbox", undefined, "Vertical");
-mainWindow.optionGroup.scrollRectPanel.AddScrollRectButton = mainWindow.optionGroup.scrollRectPanel.add("button", undefined, "Add Scroll Rect");
-mainWindow.optionGroup.scrollRectPanel.AddScrollRectButton.onClick= createScrollRectCallback(
-    mainWindow.optionGroup.scrollRectPanel.horizontalCheckbox,
-    mainWindow.optionGroup.scrollRectPanel.verticalCheckbox
+mainWindow.optionGroup = mainWindow.add(
+    "Group{\
+        orientation: 'column',\
+        \
+        currentSelectedLayerNameText: StaticText{\
+            text: 'Select',\
+            bounds: [0, 0, 400, 100]\
+            properties: { multiline: true }\
+        }\
+    }"
 );
 
+appendSkipPanel(mainWindow.optionGroup);
+appendWidgetPanel(mainWindow.optionGroup);
+appendAnchorPanel(mainWindow.optionGroup);
+appendGridPanel(mainWindow.optionGroup);
+appendScrollRectPanel(mainWindow.optionGroup);
+appendSerializePanel(mainWindow.optionGroup);
+
+
+
+// Start main event loop
+mainWindow.onClose = function() {
+  return isDone = true;
+};
 
 mainWindow.show();
 
-while(true){
-    app.refresh();
+while(isDone === false){
+    try{
+        app.refresh();
+    }catch(e){
+         if ( e.number != 8007 ) {
+             alert( e + " : " + e.line );
+         }else{
+             isDone = true;
+         }
+    }
 }

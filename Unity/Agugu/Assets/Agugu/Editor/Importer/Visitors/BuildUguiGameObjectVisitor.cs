@@ -86,6 +86,24 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
                 new Vector2(0.5f, 0.5f)
             );
 
+            if (node.HasGrid)
+            {
+                var gridLayoutGroup = containerGameObject.AddComponent<GridLayoutGroup>();
+                gridLayoutGroup.cellSize = node.CellSize;
+                gridLayoutGroup.spacing = node.Spacing;
+
+                var contentSizeFitter = containerGameObject.AddComponent<ContentSizeFitter>();
+                if (node.IsScrollRectHorizontal)
+                {
+                    contentSizeFitter.horizontalFit = ContentSizeFitter.FitMode.MinSize;
+                }
+
+                if (node.IsScrollRectVertical)
+                {
+                    contentSizeFitter.verticalFit = ContentSizeFitter.FitMode.MinSize;
+                }
+            }
+
             var childrenVisitor = new BuildUguiGameObjectVisitor(node.Rect, containerRectTransform);
             node.Children.ForEach(child => child.Accept(childrenVisitor));
         }

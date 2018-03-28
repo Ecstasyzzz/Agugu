@@ -40,6 +40,10 @@ public class GroupNode : UiNode
     public bool IsScrollRectHorizontal;
     public bool IsScrollRectVertical;
 
+    public bool HasGrid;
+    public Vector2 CellSize;
+    public Vector2 Spacing;
+
     public GroupNode() { }
     public GroupNode(UiNode baseNode) : base(baseNode) { }
 
