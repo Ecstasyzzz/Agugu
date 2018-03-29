@@ -129,22 +129,25 @@ function saveConfigToXMP(config, xmp){
 // UI Panel
 function appendLayerList(appendTarget){
     // TreeView is not supported by Photoshop CC 2018
-    var layerListBox = appendTarget.add(
+    appendTarget.layerList = appendTarget.add(
         "ListBox{}"
     );
- 
-    a = layerListBox.add.toString() ;
  
     var allLayerInfos = getAllLayerInfos(activeDocument);
     for(layerId in allLayerInfos)
     {
         var layerInfo = allLayerInfos[layerId];
-        var listItem = layerListBox.add ("item",padLayerIdString(layerInfo.id) + Array(layerInfo.indent + 1).join("   ") + layerInfo.name);
+        
+        var paddedIdString = padLayerIdString(layerInfo.id);
+        var indentString = Array(layerInfo.indent + 1).join("   ");
+        var listItemText = paddedIdString + indentString + layerInfo.name;
+        
+        var listItem = appendTarget.layerList.add ("item", listItemText);
         listItem.layerId = layerInfo.id;
     }
     
-    layerListBox.onChange = function(){
-        var selectedLayerListItem = layerListBox.selection;
+    appendTarget.layerList.onChange = function(){
+        var selectedLayerListItem = appendTarget.layerList.selection;
         if(selectedLayerListItem == undefined){ return; }
         
         var selectedLayerId = selectedLayerListItem.layerId;
