@@ -270,6 +270,38 @@ function createAnchorButtonCallback(xAnchor, yAnchor){
 }
 
 
+function appendPivotPanel(appendTarget){
+    var pivotPanel = appendTarget.add(
+        "Panel{\
+            text: 'Pivot',\
+            orientation: 'column',\
+            \
+            pivotXLabel: StaticText { text: 'Pivot X' },\
+            pivotXText: EditText { text: '0.5' },\
+            \
+            pivotYLabel: StaticText { text: 'Pivot Y' },\
+            pivotYText: EditText { text: '0.5' },\
+            \
+            addPivotButton: Button{ text: 'Add Pivot'}\
+        }"
+    );
+}
+
+function createPivotButtonCallback(xPivotText, yPivotText){
+    return function(){
+        var selectedLayerListItem = mainWindow.layerGroup.layerList.selection;
+        if(selectedLayerListItem == undefined){ return; }
+        
+        var selectedLayerId = selectedLayerListItem.layerId;
+        
+        setLayerConfig(config, selectedLayerId, 'xPivot', xPivotText.text);
+        setLayerConfig(config, selectedLayerId, 'yPivot', yPivotText.text);
+        
+        updateLayerStatusLabel(selectedLayerId);
+    }
+}
+
+
 function appendScrollRectPanel(appendTarget){
     var scrollRectPanel = appendTarget.add(
         "Panel{\
@@ -420,7 +452,11 @@ appendLayerList(mainWindow.layerGroup);
 
 appendSkipPanel(mainWindow.optionGroup);
 appendWidgetPanel(mainWindow.optionGroup);
-appendAnchorPanel(mainWindow.optionGroup);
+
+var anchorPivorGroup = mainWindow.optionGroup.add("Group{}");
+appendAnchorPanel(anchorPivorGroup);
+appendPivotPanel(anchorPivorGroup);
+
 appendGridPanel(mainWindow.optionGroup);
 appendScrollRectPanel(mainWindow.optionGroup);
 appendSerializePanel(mainWindow.optionGroup);
