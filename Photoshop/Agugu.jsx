@@ -226,18 +226,30 @@ function createWidgetButtonCallback(widgetType){
 
 // Anchor Type
 const xAnchorType = ['left', 'center', 'right', 'stretch'];
-const yAnchorType = ['top', 'center', 'bottom', 'stretch'];
+const yAnchorType = ['top', 'middle', 'bottom', 'stretch'];
 function appendAnchorPanel(appendTarget){
     var anchorPanel = appendTarget.add("panel", undefined, "Anchor");
 
+    var scriptFolder = Folder($.fileName).path;
+    
     for(var y = 0; y < yAnchorType.length; y++){
         var yAnchor = yAnchorType[y];
         
         var horizontalGroup = anchorPanel.add('group');
+        horizontalGroup.add("StaticText { text: '" + yAnchor + "', preferredSize:[50,20], justify: 'center'}")
         for(var x = 0; x < xAnchorType.length; x++){
             var xAnchor = xAnchorType[x];
+            var iconPath = scriptFolder + "/UIImage/" + xAnchor + "-" + yAnchor+ ".png";
+            var icon = File(iconPath) ;
             
-            var anchorButton = horizontalGroup.add("button", undefined, xAnchor + " - " + yAnchor);
+            var anchorButton;
+            if(y == 0){
+                var verticalGroup = horizontalGroup.add("Group{orientation:'column'}");
+                verticalGroup.add("StaticText { text: '" + xAnchor + "', justify: 'center'}");
+                anchorButton = verticalGroup.add("iconbutton", undefined, ScriptUI.newImage(icon,icon,icon,icon));
+            }else{
+                anchorButton = horizontalGroup.add("iconbutton", undefined, ScriptUI.newImage(icon,icon,icon,icon));
+            }
             anchorButton.onClick = createAnchorButtonCallback(xAnchor, yAnchor)
          }
     }
