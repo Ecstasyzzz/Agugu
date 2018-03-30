@@ -10,6 +10,7 @@ public class UiNode
     public bool IsVisible;
     public bool IsSkipped;
 
+    public Vector2 Pivot;
     public XAnchorType XAnchor;
     public YAnchorType YAnchor;
     public Rect Rect;
@@ -23,6 +24,7 @@ public class UiNode
         IsVisible = copySource.IsVisible;
         IsSkipped = copySource.IsSkipped;
 
+        Pivot = copySource.Pivot;
         XAnchor = copySource.XAnchor;
         YAnchor = copySource.YAnchor;
         Rect = copySource.Rect;

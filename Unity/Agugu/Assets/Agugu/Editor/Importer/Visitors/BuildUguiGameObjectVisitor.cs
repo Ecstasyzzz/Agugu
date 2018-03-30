@@ -57,7 +57,7 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
             groupRectTransform,
             node.Rect, _parentRect,
             _GetAnchorMin(node), _GetAnchorMax(node),
-            new Vector2(0.5f, 0.5f)
+            node.Pivot
         );
 
         if (node.HasScrollRect)
@@ -137,7 +137,7 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
             uiRectTransform,
             node.Rect, _parentRect,
             _GetAnchorMin(node), _GetAnchorMax(node),
-            new Vector2(0.5f, 0.5f)
+            node.Pivot
         );
 
         uiGameObject.transform.SetParent(_parent, worldPositionStays: false);
@@ -160,7 +160,7 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
             uiRectTransform,
             node.Rect, _parentRect,
             _GetAnchorMin(node), _GetAnchorMax(node),
-            new Vector2(0.5f, 0.5f)
+            node.Pivot
         );
 
         // Have to set localPosition before parenting

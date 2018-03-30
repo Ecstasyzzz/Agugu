@@ -46,11 +46,15 @@ public class PsdParser
     private const string IdTag = "Id";
     private const string PropertiesTag = "Properties";
 
-    private const string XAnchorPropertyTag = "xAnchor";
-    private const string YAnchorPropertyTag = "yAnchor";
+    private const string IsSkippedPropertyTag = "isSkipped";
+
     private const string WidgetTypePropertyTag = "widgetType";
 
-    private const string IsSkippedPropertyTag = "isSkipped";
+    private const string XAnchorPropertyTag = "xAnchor";
+    private const string YAnchorPropertyTag = "yAnchor";
+
+    private const string XPivotPropertyTag = "xPivot";
+    private const string YPivotPropertyTag = "yPivot";
 
     private const string HasScrollRectPropertyTag = "hasScrollRect";
     private const string IsScrollRectHorizontalPropertyTag = "isScrollRectHorizontal";
@@ -151,9 +155,15 @@ public class PsdParser
         bool isVisible = layer.IsVisible;
 
         var config = tree.Configs.GetLayerConfig(id);
+
         bool isSkipped = _GetLayerConfigAsBool(config, IsSkippedPropertyTag);
+
+        Vector2 pivot = new Vector2(_GetLayerConfigAsFloat(config, XPivotPropertyTag, 0.5f),
+                                    _GetLayerConfigAsFloat(config, YPivotPropertyTag, 0.5f));
+
         XAnchorType xAnchor = _GetXAnchorType(config.GetValueOrDefault(XAnchorPropertyTag));
         YAnchorType yAnchor = _GetYAnchorType(config.GetValueOrDefault(YAnchorPropertyTag));
+
         var rect = new Rect
         {
             xMin = layer.Left,
@@ -172,6 +182,7 @@ public class PsdParser
             IsVisible = isVisible,
             IsSkipped = isSkipped,
 
+            Pivot = pivot,
             XAnchor = xAnchor,
             YAnchor = yAnchor,
             Rect = rect
@@ -280,6 +291,12 @@ public class PsdParser
     {
         string tagValue = layerConfig.GetValueOrDefault(tag);
         return float.Parse(tagValue);
+    }
+
+    private static float _GetLayerConfigAsFloat(Dictionary<string, string> layerConfig, string tag, float defaultValue)
+    {
+        string tagValue = layerConfig.GetValueOrDefault(tag);
+        return !string.IsNullOrEmpty(tagValue) ? float.Parse(tagValue) : defaultValue;
     }
 
     private static bool _IsGroupLayer(PsdLayer psdLayer)

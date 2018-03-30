@@ -288,6 +288,8 @@ function appendPivotPanel(appendTarget){
             addPivotButton: Button{ text: 'Add Pivot'}\
         }"
     );
+    
+    pivotPanel.addPivotButton.onClick = createPivotButtonCallback(pivotPanel.pivotXText, pivotPanel.pivotYText);
 }
 
 function createPivotButtonCallback(xPivotText, yPivotText){
