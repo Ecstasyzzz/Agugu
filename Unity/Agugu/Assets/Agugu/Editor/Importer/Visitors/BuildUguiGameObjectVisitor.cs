@@ -190,7 +190,7 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
         switch (node.YAnchor)
         {
             case YAnchorType.Bottom:  y = 0;    break;
-            case YAnchorType.Center:  y = 0.5f; break;
+            case YAnchorType.Middle:  y = 0.5f; break;
             case YAnchorType.Top:     y = 1;    break;
             case YAnchorType.Stretch: y = 0;    break;
             default:                  y = 0.5f; break;
@@ -215,7 +215,7 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
         switch (node.YAnchor)
         {
             case YAnchorType.Bottom:  y = 0;    break;
-            case YAnchorType.Center:  y = 0.5f; break;
+            case YAnchorType.Middle:  y = 0.5f; break;
             case YAnchorType.Top:     y = 1;    break;
             case YAnchorType.Stretch: y = 1;    break;
             default:                  y = 0.5f; break;

@@ -24,7 +24,7 @@ public enum YAnchorType
 {
     None,
     Bottom,
-    Center,
+    Middle,
     Top,
     Stretch
 }
@@ -350,7 +350,7 @@ public class PsdParser
         switch (value)
         {
             case "top": return YAnchorType.Top;
-            case "center": return YAnchorType.Center;
+            case "middle": return YAnchorType.Middle;
             case "bottom": return YAnchorType.Bottom;
             case "stretch": return YAnchorType.Stretch;
             default: return YAnchorType.None;
