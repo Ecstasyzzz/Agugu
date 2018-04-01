@@ -54,6 +54,10 @@ function setLayerConfig(config, layerId, propertyName, propertyValue){
     config[layerId][propertyName] = propertyValue;
 }
 
+function clearLayerConfig(config, layerId){
+    config[layerId] = {}
+}
+
 // XMP
 function loadConfigFromXMP(config, xmp){
     var configRoot = xmp.getProperty(aguguXmpNamespace, xmpConfigRootTag);
@@ -164,6 +168,34 @@ function padLayerIdString(id){
         return " " + id + " ";
     }else{
         return "" + id + " ";
+    }
+}
+
+
+function appendCurrentLayerControls(appendTarget){
+    var group = appendTarget.add("Group{orientation: 'row'}");
+    
+    appendTarget.currentSelectedLayerNameText = group.add(
+        "StaticText{\
+            text: 'Select',\
+            bounds: [0, 0, 400, 100]\
+            properties: { multiline: true }\
+    }");
+    
+    var clearButton = group.add("Button{text:'Clear'}");
+    clearButton.onClick = createClearLayerCallback();
+}
+
+function createClearLayerCallback(){
+    return function(){
+        var selectedLayerListItem = mainWindow.layerGroup.layerList.selection;
+        if(selectedLayerListItem == undefined){ return; }
+        
+        var selectedLayerId = selectedLayerListItem.layerId;
+        
+        clearLayerConfig(config, selectedLayerId);
+        
+        updateLayerStatusLabel(selectedLayerId);
     }
 }
 
@@ -441,20 +473,14 @@ var mainWindow = new Window (
     frameLocation: [400,160],\
     \
     layerGroup: Group{},\
-    optionGroup: Group{\
-        orientation: 'column',\
-        \
-        currentSelectedLayerNameText: StaticText{\
-            text: 'Select',\
-            bounds: [0, 0, 400, 100]\
-            properties: { multiline: true }\
-        }\
-    }\
+    optionGroup: Group{ orientation: 'column' }\
 }");
 
-
+        
+        
 appendLayerList(mainWindow.layerGroup);
 
+appendCurrentLayerControls(mainWindow.optionGroup);
 appendSkipPanel(mainWindow.optionGroup);
 appendWidgetPanel(mainWindow.optionGroup);
 
