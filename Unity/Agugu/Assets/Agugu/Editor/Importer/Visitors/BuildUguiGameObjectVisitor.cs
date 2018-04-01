@@ -15,33 +15,21 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
 
     public GameObject Visit(UiTreeRoot root)
     {
-        var canvasGameObject = _CreateCanvasGameObject(root.Width, root.Height);
-        var canvasRectTransform = canvasGameObject.GetComponent<RectTransform>();
-        canvasRectTransform.ForceUpdateRectTransforms();
+        var uiRootGameObject = new GameObject(root.Name);
 
-        var canvasBaseRect = new Rect(0, 0, root.Width, root.Height);
-        var childrenVisitor = new BuildUguiGameObjectVisitor(canvasBaseRect, canvasRectTransform);
+        var uiRootRectTransform = uiRootGameObject.AddComponent<RectTransform>();
+        uiRootRectTransform.anchorMin = Vector2.zero;
+        uiRootRectTransform.anchorMax = Vector2.one;
+        uiRootRectTransform.offsetMin = Vector2.zero;
+        uiRootRectTransform.offsetMax = Vector2.zero;
+        uiRootRectTransform.ForceUpdateRectTransforms();
+        
+
+        var baseRect = new Rect(0, 0, root.Width, root.Height);
+        var childrenVisitor = new BuildUguiGameObjectVisitor(baseRect, uiRootRectTransform);
         root.Children.ForEach(child => child.Accept(childrenVisitor));
 
-        return canvasGameObject;
-    }
-
-    private static GameObject _CreateCanvasGameObject(float width, float height)
-    {
-        var canvasGameObject = new GameObject("Canvas");
-
-        var canvas = canvasGameObject.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-
-        var canvasScaler = canvasGameObject.AddComponent<CanvasScaler>();
-        canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        canvasScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        canvasScaler.referenceResolution = new Vector2(width, height);
-        canvasScaler.matchWidthOrHeight = 0;
-
-        var graphicRaycaster = canvasGameObject.AddComponent<GraphicRaycaster>();
-
-        return canvasGameObject;
+        return uiRootGameObject;
     }
 
     public void Visit(GroupNode node)
@@ -126,7 +114,7 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
         var text = uiGameObject.AddComponent<Text>();
         text.text = node.Text;
         text.color = node.TextColor;
-        text.font = AguguFontLookup.Instance.GetFont(node.FontName);
+        text.font = AguguConfig.Instance.GetFont(node.FontName);
         // TODO: Wild guess, cannot find any reference about Unity font size
         // 25/6
         text.fontSize = (int)(node.FontSize / 4.16);

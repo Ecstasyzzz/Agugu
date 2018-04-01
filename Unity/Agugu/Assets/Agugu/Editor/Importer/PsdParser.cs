@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 
@@ -71,6 +72,8 @@ public class PsdParser
         using (var document = PsdDocument.Create(psdPath))
         {
             var uiTree = new UiTreeRoot();
+
+            uiTree.Name = Path.GetFileName(psdPath);
             uiTree.Width = document.Width;
             uiTree.Height = document.Height;
             uiTree.Configs = _ParseConfig(document);

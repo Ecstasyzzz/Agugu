@@ -2,6 +2,8 @@
 
 public class UiTreeRoot
 {
+    public string Name;
+
     public float Width;
     public float Height;
 

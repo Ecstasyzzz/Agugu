@@ -11,30 +11,122 @@ public class PsdImporter
     [MenuItem("Agugu/Import Selection")]
     public static void ImportSelection()
     {
+        string psdPath = _GetSelectedPsdPath();
+
+        if (!string.IsNullOrEmpty(psdPath))
+        {
+            UiTreeRoot uiTree = PsdParser.Parse(psdPath);
+            ImportPsdAsPrefab(psdPath, uiTree);
+        }
+    }
+
+    private static string _GetSelectedPsdPath()
+    {
         UnityEngine.Object selectedObject = Selection.activeObject;
         string selectedObjectPath = AssetDatabase.GetAssetPath(selectedObject);
 
         string fileExtension = Path.GetExtension(selectedObjectPath);
         bool isPsdFile = string.Equals(fileExtension, ".psd",
-                                       StringComparison.OrdinalIgnoreCase);
+            StringComparison.OrdinalIgnoreCase);
 
         if (!isPsdFile)
         {
             Debug.LogError("Selected Asset is not a PSD file");
-            return;
+            return string.Empty;
         }
 
-        ImportPsdAsPrefab(selectedObjectPath, true);
+        return selectedObjectPath;
     }
 
-    public static void ImportPsdAsPrefab(string psdPath, bool keepGameObject)
+    [MenuItem("Agugu/Import Selection With Canvas")]
+    public static void ImportSelectionWithCanvas()
     {
-        UiTreeRoot uiTree = PsdParser.Parse(psdPath);
+        string psdPath = _GetSelectedPsdPath();
 
+        if (!string.IsNullOrEmpty(psdPath))
+        {
+            UiTreeRoot uiTree = PsdParser.Parse(psdPath);
+
+            var canvasGameObject = _CreateCanvasGameObject(uiTree.Width, uiTree.Height);
+            var canvasRectTransform = canvasGameObject.GetComponent<RectTransform>();
+            canvasRectTransform.ForceUpdateRectTransforms();
+
+            ImportPsdAsPrefab(psdPath, uiTree, true, canvasRectTransform);
+        }
+    }
+
+    private static GameObject _CreateCanvasGameObject(float width, float height)
+    {
+        var canvasGameObject = new GameObject("Canvas");
+
+        var canvas = canvasGameObject.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+
+        var canvasScaler = canvasGameObject.AddComponent<CanvasScaler>();
+        canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        canvasScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        canvasScaler.referenceResolution = new Vector2(width, height);
+        canvasScaler.matchWidthOrHeight = 0;
+
+        var graphicRaycaster = canvasGameObject.AddComponent<GraphicRaycaster>();
+
+        return canvasGameObject;
+    }
+
+    public static void ImportPsdAsPrefab(string psdPath, 
+                                         UiTreeRoot uiTree, 
+                                         bool keepGameObject = false, 
+                                         Transform parent = null)
+    {
         _SaveTextureAsAsset(psdPath, uiTree);
-        GameObject canvasGameObject = _BuildUguiGameObject(uiTree);
+
+        GameObject uiGameObject = _BuildUguiGameObject(uiTree);
+        if (parent != null)
+        {
+            uiGameObject.GetComponent<Transform>().SetParent(parent, worldPositionStays: false);
+        }
 
         var prefabPath = _GetImportedPrefabSavePath(psdPath);
+        _UpdatePrefab(prefabPath, uiGameObject);
+        
+
+        if (keepGameObject)
+        {
+            var prefabGameObject = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            PrefabUtility.ConnectGameObjectToPrefab(uiGameObject, prefabGameObject);
+
+            
+        }
+        else
+        {
+            GameObject.DestroyImmediate(uiGameObject);
+        }
+    }
+
+    public static void _SaveTextureAsAsset(string psdPath, UiTreeRoot uiTree)
+    {
+        string importedTexturesFolder = _GetImportedTexturesSaveFolder(psdPath);
+        _EnsureFolder(importedTexturesFolder);
+        var saveTextureVisitor = new SaveTextureVisitor(importedTexturesFolder);
+        saveTextureVisitor.Visit(uiTree);
+    }
+
+    private static string _GetImportedTexturesSaveFolder(string psdPath)
+    {
+        string psdFolder = Path.GetDirectoryName(psdPath);
+        string psdName = Path.GetFileNameWithoutExtension(psdPath);
+        string importedTexturesFolder = Path.Combine(psdFolder, string.Format("ImportedTextures-{0}", psdName)); 
+
+        return importedTexturesFolder;
+    }
+
+    private static void _EnsureFolder(string folderPath)
+    {
+        Directory.CreateDirectory(folderPath);
+    }
+
+    private static void _UpdatePrefab(string prefabPath, GameObject uiGameObject)
+    {
         var prefabObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(prefabPath);
         if (prefabObject == null)
         {
@@ -52,43 +144,12 @@ public class PsdImporter
                     !(component is GraphicRaycaster))
                 {
                     UnityEditorInternal.ComponentUtility.CopyComponent(component);
-                    UnityEditorInternal.ComponentUtility.PasteComponentAsNew(canvasGameObject);
+                    UnityEditorInternal.ComponentUtility.PasteComponentAsNew(uiGameObject);
                 }
             }
         }
 
-        PrefabUtility.ReplacePrefab(canvasGameObject, prefabObject, ReplacePrefabOptions.ReplaceNameBased);
-
-        if (keepGameObject)
-        {
-            var prefabGameObject = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-            PrefabUtility.ConnectGameObjectToPrefab(canvasGameObject, prefabGameObject);
-        }
-        else
-        {
-            GameObject.DestroyImmediate(canvasGameObject);
-        }
-    }
-
-    public static void _SaveTextureAsAsset(string psdPath, UiTreeRoot uiTree)
-    {
-        string importedTexturesFolder = _GetImportedTexturesSaveFolder(psdPath);
-        _EnsureFolder(importedTexturesFolder);
-        var saveTextureVisitor = new SaveTextureVisitor(importedTexturesFolder);
-        saveTextureVisitor.Visit(uiTree);
-    }
-
-    private static string _GetImportedTexturesSaveFolder(string psdPath)
-    {
-        string psdFolder = Path.GetDirectoryName(psdPath);
-        string importedTexturesFolder = Path.Combine(psdFolder, "ImportedTextures");
-
-        return importedTexturesFolder;
-    }
-
-    private static void _EnsureFolder(string folderPath)
-    {
-        Directory.CreateDirectory(folderPath);
+        PrefabUtility.ReplacePrefab(uiGameObject, prefabObject, ReplacePrefabOptions.ReplaceNameBased);
     }
 
 

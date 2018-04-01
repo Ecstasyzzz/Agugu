@@ -21,7 +21,12 @@ public class PSDPostprocessor : AssetPostprocessor
                 continue;
             }
 
-            PsdImporter.ImportPsdAsPrefab(importedAssetPath, keepGameObject: false);
+            if (!AguguConfig.Instance.IsTracked(importedAssetPath))
+            {
+                continue;
+            }
+
+            PsdImporter.ImportPsdAsPrefab(importedAssetPath, PsdParser.Parse(importedAssetPath), keepGameObject: false);
         }
     }
 }
