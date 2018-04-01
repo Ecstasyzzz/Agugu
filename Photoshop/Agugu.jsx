@@ -179,7 +179,7 @@ function appendCurrentLayerControls(appendTarget){
         "StaticText{\
             text: 'Select',\
             bounds: [0, 0, 400, 100]\
-            properties: { multiline: true }\
+            properties: { multiline: true, scrolling: true }\
     }");
     
     var clearButton = group.add("Button{text:'Clear'}");
