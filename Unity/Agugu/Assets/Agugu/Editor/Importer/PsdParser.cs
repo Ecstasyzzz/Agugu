@@ -243,15 +243,9 @@ public class PsdParser
             var firstStyelSheetData = (Properties)firstStyleSheet["StyleSheetData"];
 
             var fontIndex = (int)firstStyelSheetData["Font"];
-            // Font size could be omitted TODO: Find official default Value
-            var fontSize = firstStyelSheetData.Contains("FontSize") ? (float)firstStyelSheetData["FontSize"] : 42;
-            var fillColor = (Properties)firstStyelSheetData["FillColor"];
-            var fillColorValue = (ArrayList)fillColor["Values"];
-            //ARGB
-            var textColor = new Color((float)fillColorValue[1],
-                (float)fillColorValue[2],
-                (float)fillColorValue[3],
-                (float)fillColorValue[0]);
+            
+            var fontSize = _GetFontSizeFromStyelSheetData(firstStyelSheetData);
+            var textColor = _GetTextColorFromStyelSheetData(firstStyelSheetData);
 
             var documentResources = (Properties)engineData["DocumentResources"];
             var fontSet = (ArrayList)documentResources["FontSet"];
@@ -311,6 +305,36 @@ public class PsdParser
     private static bool _IsTextLayer(PsdLayer psdLayer)
     {
         return psdLayer.Resources.Contains("TySh");
+    }
+
+    private static float _GetFontSizeFromStyelSheetData(Properties styleSheetData)
+    {
+        // Font size could be omitted TODO: Find official default Value
+        if (styleSheetData.Contains("FontSize"))
+        {
+            return (float) styleSheetData["FontSize"];
+        }
+
+        return 42;
+    }
+
+    private static Color _GetTextColorFromStyelSheetData(Properties styleSheetData)
+    {
+        // FillColor also could be omitted
+        if (styleSheetData.Contains("FillColor"))
+        {
+            var fillColor = (Properties)styleSheetData["FillColor"];
+            var fillColorValue = (ArrayList)fillColor["Values"];
+            //ARGB
+            var textColor = new Color((float)fillColorValue[1],
+                (float)fillColorValue[2],
+                (float)fillColorValue[3],
+                (float)fillColorValue[0]);
+
+            return textColor;
+        }
+        
+        return Color.black;
     }
 
     public static Texture2D GetTexture2DFromPsdLayer(IPsdLayer layer)
