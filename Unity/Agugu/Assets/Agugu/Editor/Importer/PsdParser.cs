@@ -90,10 +90,17 @@ public class PsdParser
     private static PsdLayerConfigs _ParseConfig(PsdDocument document)
     {
         IProperties imageResources = document.ImageResources;
-        var xmpImageResource = imageResources["XmpMetadata"] as Reader_XmpMetadata;
-        var xmpValue = xmpImageResource.Value["Xmp"] as string;
+        if (imageResources.Contains("XmpMetadata"))
+        {
+            var xmpImageResource = imageResources["XmpMetadata"] as Reader_XmpMetadata;
+            var xmpValue = xmpImageResource.Value["Xmp"] as string;
 
-        return ParseXMP(xmpValue);
+            return ParseXMP(xmpValue);
+        }
+        else
+        {
+            return new PsdLayerConfigs();
+        }
     }
 
     public static PsdLayerConfigs ParseXMP(string xmpString)
