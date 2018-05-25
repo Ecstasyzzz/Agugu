@@ -1,13 +1,28 @@
 ﻿using System;
+using System.Collections;
 using System.IO;
 
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEditor;
 
+using AdInfinitum;
+
 
 public class PsdImporter
 {
+    private static readonly ParallelCoroutineExecutor Executor = new ParallelCoroutineExecutor();
+
+    static PsdImporter()
+    {
+        EditorApplication.update += _EditorUpdate;
+    }
+
+    private static void _EditorUpdate()
+    {
+        Executor.Resume();
+    }
+
     [MenuItem("Agugu/Import Selection")]
     public static void ImportSelection()
     {
@@ -73,12 +88,29 @@ public class PsdImporter
         return canvasGameObject;
     }
 
-    public static void ImportPsdAsPrefab(string psdPath, 
-                                         UiTreeRoot uiTree, 
-                                         bool keepGameObject = false, 
-                                         Transform parent = null)
+    public static void ImportPsdAsPrefab
+    (
+        string     psdPath,
+        UiTreeRoot uiTree,
+        bool       keepGameObject = false,
+        Transform  parent         = null
+    )
+    {
+        Executor.Add(AdInfinitum.Coroutine.Create(
+            _ImportPsdAsPrefabProcess(psdPath, uiTree, keepGameObject, parent)));
+    }
+
+    private static IEnumerator _ImportPsdAsPrefabProcess
+    (
+        string     psdPath,
+        UiTreeRoot uiTree,
+        bool       keepGameObject = false,
+        Transform  parent         = null
+    )
     {
         _SaveTextureAsAsset(psdPath, uiTree);
+
+        yield return null;
 
         GameObject uiGameObject = _BuildUguiGameObject(uiTree);
         if (parent != null)
@@ -88,14 +120,12 @@ public class PsdImporter
 
         var prefabPath = _GetImportedPrefabSavePath(psdPath);
         _UpdatePrefab(prefabPath, uiGameObject);
-        
+
 
         if (keepGameObject)
         {
             var prefabGameObject = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
             PrefabUtility.ConnectGameObjectToPrefab(uiGameObject, prefabGameObject);
-
-            
         }
         else
         {
@@ -106,7 +136,8 @@ public class PsdImporter
     public static void _SaveTextureAsAsset(string psdPath, UiTreeRoot uiTree)
     {
         string importedTexturesFolder = _GetImportedTexturesSaveFolder(psdPath);
-        _EnsureFolder(importedTexturesFolder);
+        _ClearFolder(importedTexturesFolder);
+
         var saveTextureVisitor = new SaveTextureVisitor(importedTexturesFolder);
         saveTextureVisitor.Visit(uiTree);
     }
@@ -118,6 +149,20 @@ public class PsdImporter
         string importedTexturesFolder = Path.Combine(psdFolder, string.Format("ImportedTextures-{0}", psdName)); 
 
         return importedTexturesFolder;
+    }
+
+    private static void _ClearFolder(string folderPath)
+    {
+        _DeleteFolder(folderPath);
+        _EnsureFolder(folderPath);
+    }
+
+    private static void _DeleteFolder(string folderPath)
+    {
+        if (Directory.Exists(folderPath))
+        {
+            Directory.Delete(folderPath, recursive: true);
+        }
     }
 
     private static void _EnsureFolder(string folderPath)
