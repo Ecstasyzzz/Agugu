@@ -40,6 +40,9 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
         var groupRectTransform = groupGameObject.AddComponent<RectTransform>();
         groupGameObject.transform.SetParent(_parent, worldPositionStays: false);
 
+        var layerIdTag = groupGameObject.AddComponent<PsdLayerIdTag>();
+        layerIdTag.LayerId = node.Id;
+
         _SetRectTransform
         (
             groupRectTransform,
@@ -102,6 +105,7 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
         }
 
         groupGameObject.SetActive(node.IsVisible);
+        
     }
 
     public void Visit(TextNode node)
@@ -110,6 +114,9 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
 
         var uiGameObject = new GameObject(node.Name);
         var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
+
+        var layerIdTag = uiGameObject.AddComponent<PsdLayerIdTag>();
+        layerIdTag.LayerId = node.Id;
 
         var text = uiGameObject.AddComponent<Text>();
         text.text = node.Text;
@@ -142,6 +149,9 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
         var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
         var image = uiGameObject.AddComponent<Image>();
         image.sprite = importedSprite;
+
+        var layerIdTag = uiGameObject.AddComponent<PsdLayerIdTag>();
+        layerIdTag.LayerId = node.Id;
 
         _SetRectTransform
         (
