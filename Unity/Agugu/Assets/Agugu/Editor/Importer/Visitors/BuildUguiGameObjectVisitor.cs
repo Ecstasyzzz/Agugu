@@ -23,7 +23,9 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
         uiRootRectTransform.offsetMin = Vector2.zero;
         uiRootRectTransform.offsetMax = Vector2.zero;
         uiRootRectTransform.ForceUpdateRectTransforms();
-        
+
+        var layerIdTag = uiRootGameObject.AddComponent<PsdLayerIdTag>();
+        layerIdTag.LayerId = -1;
 
         var baseRect = new Rect(0, 0, root.Width, root.Height);
         var childrenVisitor = new BuildUguiGameObjectVisitor(baseRect, uiRootRectTransform);
@@ -51,58 +53,8 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
             node.Pivot
         );
 
-        if (node.HasScrollRect)
-        {
-            var scrollRect = groupGameObject.AddComponent<ScrollRect>();
-            scrollRect.horizontal = node.IsScrollRectHorizontal;
-            scrollRect.vertical = node.IsScrollRectVertical;
-
-            string containerGameObjectName = node.Name + "Container";
-            var containerGameObject = new GameObject(containerGameObjectName);
-            var containerRectTransform = containerGameObject.AddComponent<RectTransform>();
-            containerGameObject.transform.SetParent(groupRectTransform, worldPositionStays: false);
-
-            scrollRect.content = containerRectTransform;
-
-            groupGameObject.AddComponent<Image>();
-
-            var mask = groupGameObject.AddComponent<Mask>();
-            mask.showMaskGraphic = false;
-
-            _SetRectTransform
-            (
-                containerRectTransform,
-                node.Rect, node.Rect,
-                _GetAnchorMin(node), _GetAnchorMax(node),
-                new Vector2(0.5f, 0.5f)
-            );
-
-            if (node.HasGrid)
-            {
-                var gridLayoutGroup = containerGameObject.AddComponent<GridLayoutGroup>();
-                gridLayoutGroup.cellSize = node.CellSize;
-                gridLayoutGroup.spacing = node.Spacing;
-
-                var contentSizeFitter = containerGameObject.AddComponent<ContentSizeFitter>();
-                if (node.IsScrollRectHorizontal)
-                {
-                    contentSizeFitter.horizontalFit = ContentSizeFitter.FitMode.MinSize;
-                }
-
-                if (node.IsScrollRectVertical)
-                {
-                    contentSizeFitter.verticalFit = ContentSizeFitter.FitMode.MinSize;
-                }
-            }
-
-            var childrenVisitor = new BuildUguiGameObjectVisitor(node.Rect, containerRectTransform);
-            node.Children.ForEach(child => child.Accept(childrenVisitor));
-        }
-        else
-        {
-            var childrenVisitor = new BuildUguiGameObjectVisitor(node.Rect, groupRectTransform);
-            node.Children.ForEach(child => child.Accept(childrenVisitor));
-        }
+        var childrenVisitor = new BuildUguiGameObjectVisitor(node.Rect, groupRectTransform);
+        node.Children.ForEach(child => child.Accept(childrenVisitor));
 
         groupGameObject.SetActive(node.IsVisible);
         
@@ -164,11 +116,7 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
         // Have to set localPosition before parenting
         // Or the last imported layer will be reset to 0, 0, 0, I think it's a bug :(
         uiGameObject.transform.SetParent(_parent, worldPositionStays: false);
-
-        if (node.WidgetType == WidgetType.Button)
-        {
-            uiGameObject.AddComponent<Button>();
-        }
+        
         uiGameObject.SetActive(node.IsVisible);
     }
 

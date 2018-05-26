@@ -199,8 +199,6 @@ public class PsdImporter
         Dictionary<int, GameObject> targetMapping =
             _BuildLayerIdToGameObjectMapping(targetGameObjectRoot);
 
-        _MoveNonImportedGameObjects(sourceGameObjectRoot, targetGameObjectRoot);
-
         foreach (var idAndGameObjectPair in targetMapping)
         {
             if (sourceMapping.ContainsKey(idAndGameObjectPair.Key))
@@ -211,8 +209,6 @@ public class PsdImporter
                 _MoveNonImportedGameObjects(source, target);
             }
         }
-
-        _CopyNonImportedComponents(sourceGameObjectRoot, targetGameObjectRoot, targetMapping);
 
         foreach (var idAndGameObjectPair in targetMapping)
         {
