@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Collections;
-using System.Collections.Generic;
 
 using UnityEngine;
 using UnityEngine.UI;
@@ -113,14 +112,14 @@ public class PsdImporter
 
         yield return null;
 
-        GameObject uiGameObject = _BuildUguiGameObject(uiTree);
+        GameObject uiGameObject = _BuildUguiGameObjectTree(uiTree);
         if (parent != null)
         {
             uiGameObject.GetComponent<Transform>().SetParent(parent, worldPositionStays: false);
         }
 
         var prefabPath = _GetImportedPrefabSavePath(psdPath);
-        _UpdatePrefab(prefabPath, uiGameObject);
+        _SavePrefab(prefabPath, uiGameObject);
 
 
         if (keepGameObject)
@@ -136,14 +135,14 @@ public class PsdImporter
 
     public static void _SaveTextureAsAsset(string psdPath, UiTreeRoot uiTree)
     {
-        string importedTexturesFolder = _GetImportedTexturesSaveFolder(psdPath);
+        string importedTexturesFolder = _GetImportedTexturesSavePath(psdPath);
         _ClearFolder(importedTexturesFolder);
 
         var saveTextureVisitor = new SaveTextureVisitor(importedTexturesFolder);
         saveTextureVisitor.Visit(uiTree);
     }
 
-    private static string _GetImportedTexturesSaveFolder(string psdPath)
+    private static string _GetImportedTexturesSavePath(string psdPath)
     {
         string psdFolder = Path.GetDirectoryName(psdPath);
         string psdName = Path.GetFileNameWithoutExtension(psdPath);
@@ -171,7 +170,7 @@ public class PsdImporter
         Directory.CreateDirectory(folderPath);
     }
 
-    private static void _UpdatePrefab(string prefabPath, GameObject uiGameObject)
+    private static void _SavePrefab(string prefabPath, GameObject uiGameObject)
     {
         var prefabObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(prefabPath);
         if (prefabObject == null)
@@ -180,179 +179,17 @@ public class PsdImporter
         }
         else
         {
-            var prefabInstance = GameObject.Instantiate(prefabObject) as GameObject;
-            _MigrateAppliedPrefabModification(prefabInstance, uiGameObject);
-            GameObject.DestroyImmediate(prefabInstance);
+            UguiTreeMigrator.MigrateAppliedPrefabModification(prefabObject as GameObject, uiGameObject);
         }
-
+        
         PrefabUtility.ReplacePrefab(uiGameObject, prefabObject, ReplacePrefabOptions.ReplaceNameBased);
     }
 
-    private static void _MigrateAppliedPrefabModification
-    (
-        GameObject sourceGameObjectRoot,
-        GameObject targetGameObjectRoot
-    )
-    {
-        Dictionary<int, GameObject> sourceMapping =
-            _BuildLayerIdToGameObjectMapping(sourceGameObjectRoot);
-        Dictionary<int, GameObject> targetMapping =
-            _BuildLayerIdToGameObjectMapping(targetGameObjectRoot);
-
-        foreach (var idAndGameObjectPair in targetMapping)
-        {
-            if (sourceMapping.ContainsKey(idAndGameObjectPair.Key))
-            {
-                GameObject source = sourceMapping[idAndGameObjectPair.Key];
-                GameObject target = idAndGameObjectPair.Value;
-
-                _MoveNonImportedGameObjects(source, target);
-            }
-        }
-
-        foreach (var idAndGameObjectPair in targetMapping)
-        {
-            if (sourceMapping.ContainsKey(idAndGameObjectPair.Key))
-            {
-                GameObject source = sourceMapping[idAndGameObjectPair.Key];
-                GameObject target = idAndGameObjectPair.Value;
-               
-                _CopyNonImportedComponents(source, target, targetMapping);
-            }
-        }
-    }
-
-    private static Dictionary<int, GameObject> _BuildLayerIdToGameObjectMapping(GameObject root)
-    {
-        var psdLayerIdTagList = root.GetComponentsInChildren<PsdLayerIdTag>();
-
-        var mapping = new Dictionary<int, GameObject>();
-        foreach (var layerIdTag in psdLayerIdTagList)
-        {
-            mapping.Add(layerIdTag.LayerId, layerIdTag.gameObject);
-        }
-
-        return mapping;
-    }
-
-    private static void _CopyNonImportedComponents
-    (
-        GameObject source, 
-        GameObject target,
-        Dictionary<int, GameObject> targetLayerIdGameObjectMapping
-    )
-    {
-        var components = source.GetComponents<Component>();
-        foreach (var component in components)
-        {
-            if (!(component is Graphic) &&
-                !(component is CanvasRenderer) &&
-                !(component is Canvas) &&
-                !(component is CanvasScaler) &&
-                !(component is RectTransform) &&
-                !(component is GraphicRaycaster) &&
-                !(component is PsdLayerIdTag))
-            {
-                UnityEditorInternal.ComponentUtility.CopyComponent(component);
-                var targetComponent = target.AddComponent(component.GetType());
-                UnityEditorInternal.ComponentUtility.PasteComponentValues(targetComponent);
-                _RetargetObjectReference(component, targetComponent, targetLayerIdGameObjectMapping);
-            }
-        }
-    }
-
-    private static void _RetargetObjectReference
-    (
-        Component                   source,
-        Component                   target,
-        Dictionary<int, GameObject> targetLayerIdGameObjectMapping
-    )
-    {
-        var sourceSO = new SerializedObject(source);
-
-        var targetSO = new SerializedObject(target);
-        SerializedProperty targetSPIter = targetSO.GetIterator();
-        bool isIteratorValid = targetSPIter.Next(true);
-        while (isIteratorValid)
-        {
-            if (targetSPIter.propertyType == SerializedPropertyType.ObjectReference &&
-                !string.Equals(targetSPIter.name, "m_PrefabParentObject") &&
-                !string.Equals(targetSPIter.name, "m_PrefabInternal") &&
-                !string.Equals(targetSPIter.name, "m_GameObject") &&
-                !string.Equals(targetSPIter.name, "m_Script"))
-            {
-                string propertyPath = targetSPIter.propertyPath;
-                var sourceSP = sourceSO.FindProperty(propertyPath);
-                if (sourceSP != null)
-                {
-                    UnityEngine.Object sourceObjectReference = sourceSP.objectReferenceValue;
-                    GameObject sourceReferencedGameObject;
-                    if (sourceObjectReference is GameObject)
-                    {
-                        sourceReferencedGameObject = sourceObjectReference as GameObject;
-                    }
-                    else if(sourceObjectReference is Component)
-                    {
-                        sourceReferencedGameObject = (sourceObjectReference as Component).gameObject;
-                    }
-                    else
-                    {
-                        sourceReferencedGameObject = null;
-                    }
-
-                    if (sourceReferencedGameObject != null)
-                    {
-                        var sourceLayerIdTag = sourceReferencedGameObject.GetComponent<PsdLayerIdTag>();
-                        if (sourceLayerIdTag != null)
-                        {
-                            int layerId = sourceLayerIdTag.LayerId;
-
-                            if (targetLayerIdGameObjectMapping.ContainsKey(layerId))
-                            {
-                                if (sourceObjectReference is GameObject)
-                                {
-                                    targetSPIter.objectReferenceValue = targetLayerIdGameObjectMapping[layerId];
-                                }
-                                else if (sourceObjectReference is Component)
-                                {
-                                    GameObject retargetGameObject = targetLayerIdGameObjectMapping[layerId];
-                                    Component retargetComponent =
-                                        retargetGameObject.GetComponent(sourceObjectReference.GetType());
-                                    targetSPIter.objectReferenceValue = retargetComponent;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            isIteratorValid = targetSPIter.Next(false);
-        }
-
-        targetSO.ApplyModifiedPropertiesWithoutUndo();
-    }
-
-    private static void _MoveNonImportedGameObjects(GameObject source, GameObject target)
-    {
-        var gameObjectsShouldMove = new List<GameObject>();
-        foreach (Transform child in source.transform)
-        {
-            if (child.GetComponent<PsdLayerIdTag>() == null)
-            {
-                gameObjectsShouldMove.Add(child.gameObject);
-            }
-        }
-
-        gameObjectsShouldMove.ForEach(go => go.transform.SetParent(target.transform));
-    }
-
-
-
-    public static GameObject _BuildUguiGameObject(UiTreeRoot uiTree)
+    private static GameObject _BuildUguiGameObjectTree(UiTreeRoot uiTree)
     {
         var uguiVisitor = new BuildUguiGameObjectVisitor(default(Rect), null);
-        GameObject canvasGameObject = uguiVisitor.Visit(uiTree);
-        return canvasGameObject;
+        GameObject rootGameObject = uguiVisitor.Visit(uiTree);
+        return rootGameObject;
     }
 
 
