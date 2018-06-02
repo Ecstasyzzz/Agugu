@@ -19,11 +19,9 @@
 //OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
+#pragma warning disable 0414
+
 using Ntreev.Library.Psd.Structures;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.IO;
 
 namespace Ntreev.Library.Psd
 {

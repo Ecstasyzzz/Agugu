@@ -19,10 +19,7 @@
 //OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+#pragma warning disable 0219
 
 namespace Ntreev.Library.Psd.Readers.LayerResources
 {
