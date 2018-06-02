@@ -1,5 +1,4 @@
 ﻿using System.Linq;
-using System.Reflection;
 using System.Collections.Generic;
 
 using UnityEngine;
@@ -8,31 +7,18 @@ using UnityEditor;
 
 public class UguiTreeMigrator
 {
-    private static readonly PropertyInfo InspectorModeInfo =
-        typeof(SerializedObject).GetProperty("inspectorMode", BindingFlags.NonPublic | BindingFlags.Instance);
-
     public static void MigrateAppliedPrefabModification
     (
-        GameObject sourcePrefabRoot,
+        GameObject sourceGameObjectRoot,
         GameObject targetGameObjectRoot
     )
     {
-        var sourceGameObjectRoot = GameObject.Instantiate(sourcePrefabRoot);
-
-        Dictionary<int, GameObject> sourceMapping =
+        Dictionary<int, GameObject> layerIdToSourceMapping =
             _BuildLayerIdToGameObjectMapping(sourceGameObjectRoot);
-        Dictionary<int, GameObject> targetMapping =
+        Dictionary<int, GameObject> layerIdToTargetMapping =
             _BuildLayerIdToGameObjectMapping(targetGameObjectRoot);
-        var joinResult =
-            from sourceEntry in sourceMapping
-            join targetEntry in targetMapping on sourceEntry.Key equals targetEntry.Key
-            select new KeyValuePair<GameObject, GameObject>(sourceEntry.Value, targetEntry.Value);
-
-        var importedGameObjectMapping = new Dictionary<GameObject, GameObject>();
-        foreach(var joinPair in joinResult)
-        {
-            importedGameObjectMapping.Add(joinPair.Key, joinPair.Value);
-        }
+        Dictionary<GameObject, GameObject> importedGameObjectMapping =
+            _BuildSourceToTargetMapping(layerIdToSourceMapping, layerIdToTargetMapping);
 
         foreach (KeyValuePair<GameObject, GameObject> gameObjectPair in importedGameObjectMapping)
         {
@@ -63,22 +49,41 @@ public class UguiTreeMigrator
         }
 
         _RetargetObjectReference(targetGameObjectRoot, importedGameObjectMapping, componentMapping);
-
-        GameObject.DestroyImmediate(sourceGameObjectRoot);
     }
 
     private static Dictionary<int, GameObject> _BuildLayerIdToGameObjectMapping(GameObject root)
     {
-        var psdLayerIdTagList = root.GetComponentsInChildren<PsdLayerIdTag>();
+        var psdLayerIdTagArray = root.GetComponentsInChildren<PsdLayerIdTag>();
 
         var mapping = new Dictionary<int, GameObject>();
-        foreach (PsdLayerIdTag layerIdTag in psdLayerIdTagList)
+        foreach (PsdLayerIdTag layerIdTag in psdLayerIdTagArray)
         {
             mapping.Add(layerIdTag.LayerId, layerIdTag.gameObject);
         }
 
         return mapping;
     }
+
+    private static Dictionary<GameObject, GameObject> _BuildSourceToTargetMapping
+    (
+        Dictionary<int, GameObject> layerIdToSourceMapping,
+        Dictionary<int, GameObject> layerIdToTargetMapping
+    )
+    {
+        var joinResult =
+            from sourceEntry in layerIdToSourceMapping
+            join targetEntry in layerIdToTargetMapping on sourceEntry.Key equals targetEntry.Key
+            select new KeyValuePair<GameObject, GameObject>(sourceEntry.Value, targetEntry.Value);
+
+        var importedGameObjectMapping = new Dictionary<GameObject, GameObject>();
+        foreach (var joinPair in joinResult)
+        {
+            importedGameObjectMapping.Add(joinPair.Key, joinPair.Value);
+        }
+
+        return importedGameObjectMapping;
+    }
+
 
     private static void _MoveNonImportedGameObjects(GameObject source, GameObject target)
     {
@@ -101,8 +106,6 @@ public class UguiTreeMigrator
         Dictionary<Component, Component> componentMapping
     )
     {
-        _CopyLocalId(source, target);
-
         var sourceComponents = source.GetComponents<Component>();
         foreach (var sourceComponent in sourceComponents)
         {
@@ -118,14 +121,13 @@ public class UguiTreeMigrator
                 var targetComponent = target.AddComponent(sourceComponent.GetType());
                 if (targetComponent != null)
                 {
-                    
                     UnityEditorInternal.ComponentUtility.PasteComponentValues(targetComponent);
                     componentMapping.Add(sourceComponent, targetComponent);
                 }
                 else
                 {
                     Debug.LogErrorFormat("UguiTreeMigrator copy component failed at {0} type: {1}",
-                                         sourceComponent.gameObject.name, sourceComponent.GetType());
+                        sourceComponent.gameObject.name, sourceComponent.GetType());
                 }
             }
         }
@@ -147,27 +149,11 @@ public class UguiTreeMigrator
         }
     }
 
-    private static void _CopyLocalId(UnityEngine.Object source, UnityEngine.Object target)
-    {
-        var sourceSerializedObject = new SerializedObject(source);
-        InspectorModeInfo.SetValue(sourceSerializedObject, InspectorMode.Debug, null);
-        SerializedProperty sourceLocalIdSerializedProperty = 
-            sourceSerializedObject.FindProperty("m_LocalIdentfierInFile");
-        long sourceLocalIdValue = sourceLocalIdSerializedProperty.longValue;
-
-        var targetSerializedObject = new SerializedObject(target);
-        InspectorModeInfo.SetValue(targetSerializedObject, InspectorMode.Debug, null);
-        SerializedProperty targetLocalIdSerializedProperty =
-            targetSerializedObject.FindProperty("m_LocalIdentfierInFile");
-        targetLocalIdSerializedProperty.longValue = sourceLocalIdValue;
-        targetSerializedObject.ApplyModifiedProperties();
-    }
-
     private static void _RetargetObjectReference
     (
-        GameObject targetGameObjectRoot,
+        GameObject                         targetGameObjectRoot,
         Dictionary<GameObject, GameObject> gameObjectMapping,
-        Dictionary<Component, Component> componentMapping
+        Dictionary<Component, Component>   componentMapping
     )
     {
         Component[] allTargetComponents = targetGameObjectRoot.GetComponentsInChildren<Component>();
@@ -200,7 +186,7 @@ public class UguiTreeMigrator
                     var gameObjectReference = objectReference as GameObject;
                     if (gameObjectMapping.ContainsKey(gameObjectReference))
                     {
-                        targetSerializedPropertyIterator.objectReferenceValue = 
+                        targetSerializedPropertyIterator.objectReferenceValue =
                             gameObjectMapping[gameObjectReference];
                     }
                 }

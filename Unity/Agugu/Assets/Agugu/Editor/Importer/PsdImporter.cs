@@ -97,7 +97,8 @@ public class PsdImporter
         UiTreeRoot uiTree
     )
     {
-        Executor.Add(AdInfinitum.Coroutine.Create(_ImportPsdAsPrefabProcess(psdPath, uiTree)));
+        Executor.Add(AdInfinitum.Coroutine.Create(
+            _ImportPsdAsPrefabProcess(psdPath, uiTree)));
     }
 
     private static IEnumerator _ImportPsdAsPrefabProcess
@@ -110,11 +111,11 @@ public class PsdImporter
 
         yield return null;
 
-        GameObject uiGameObjectTree = _BuildUguiGameObjectTree(uiTree);
+        GameObject uiGameObject = _BuildUguiGameObjectTree(uiTree);
 
         var prefabPath = _GetImportedPrefabSavePath(psdPath);
-        _SavePrefab(prefabPath, uiGameObjectTree);
-        GameObject.DestroyImmediate(uiGameObjectTree);
+        _SavePrefab(prefabPath, uiGameObject);
+        GameObject.DestroyImmediate(uiGameObject);
     }
 
     public static void _SaveTextureAsAsset(string psdPath, UiTreeRoot uiTree)
@@ -163,7 +164,9 @@ public class PsdImporter
         }
         else
         {
-            UguiTreeMigrator.MigrateAppliedPrefabModification(prefabObject as GameObject, uiGameObject);
+            var sourceGameObject = GameObject.Instantiate(prefabObject);
+            UguiTreeMigrator.MigrateAppliedPrefabModification(sourceGameObject as GameObject, uiGameObject);
+            GameObject.DestroyImmediate(sourceGameObject);
         }
         
         PrefabUtility.ReplacePrefab(uiGameObject, prefabObject, ReplacePrefabOptions.ReplaceNameBased);
