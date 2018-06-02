@@ -73,7 +73,12 @@ public class BuildUguiGameObjectVisitor : IUiNodeVisitor
         var text = uiGameObject.AddComponent<Text>();
         text.text = node.Text;
         text.color = node.TextColor;
-        text.font = AguguConfig.Instance.GetFont(node.FontName);
+        Font font = AguguConfig.Instance.GetFont(node.FontName);
+        if (font == null)
+        {
+            Debug.LogWarningFormat("Font not found: {0}, at {1}", node.FontName, node.Name);
+        }
+        text.font = font;
         // TODO: Wild guess, cannot find any reference about Unity font size
         // 25/6
         text.fontSize = (int)(node.FontSize / 4.16);
