@@ -230,7 +230,7 @@ function createSkipLayerCallback(isSkipped){
 
 
 // Widget Type
-const widgetType = ['image', 'button', 'text'];
+const widgetType = ['image', 'text'];
 function appendWidgetPanel(appendTarget){
     var widgetTypePanel = appendTarget.add(
         "Panel{\
@@ -339,88 +339,6 @@ function createPivotButtonCallback(xPivotText, yPivotText){
 }
 
 
-function appendScrollRectPanel(appendTarget){
-    var scrollRectPanel = appendTarget.add(
-        "Panel{\
-            text: 'ScrollRect',\
-            orientation: 'row',\
-            \
-            horizontalCheckbox: Checkbox{ text: 'Horizontal' },\
-            verticalCheckbox: Checkbox{ text: 'Vertical' },\
-            \
-            addScrollRectButton: Button{ text: 'Add Scroll Rect'}\
-        }"
-    );
-
-    scrollRectPanel.addScrollRectButton.onClick = createScrollRectCallback(
-        scrollRectPanel.horizontalCheckbox,
-        scrollRectPanel.verticalCheckbox
-    );
-}
-
-function createScrollRectCallback(horizontalCheckbox, verticalCheckbox){
-    return function(){
-        var selectedLayerListItem = mainWindow.layerGroup.layerList.selection;
-        if(selectedLayerListItem == undefined){ return; }
-        
-        var selectedLayerId = selectedLayerListItem.layerId;
-        
-        setLayerConfig(config, selectedLayerId, 'hasScrollRect', true);
-        setLayerConfig(config, selectedLayerId, 'isScrollRectHorizontal', horizontalCheckbox.value);
-        setLayerConfig(config, selectedLayerId, 'isScrollRectVertical', verticalCheckbox.value);
-        
-        updateLayerStatusLabel(selectedLayerId);
-    }
-}
-
-
-function appendGridPanel(appendTarget){
-    var gridPanel = appendTarget.add(
-        "Panel{\
-                text: 'Grid',\
-                orientation: 'row',\
-                cellSizeXLabel: StaticText { text: 'Cell Size X' },\
-                cellSizeXText: EditText { text: '100' },\
-                \
-                cellSizeYLabel: StaticText { text: 'Cell Size Y' },\
-                cellSizeYText: EditText { text: '100' },\
-                \
-                spacingXLabel: StaticText { text: 'Spacing X' },\
-                spacingXText: EditText { text: '0' },\
-                \
-                spacingYLabel: StaticText { text: 'Spacing Y' },\
-                spacingYText: EditText { text: '0' },\
-                \
-                addGridButton: Button {text: 'Add Grid'}\
-        }"
-    );
-
-    gridPanel.addGridButton.onClick = createGridCallback(
-        gridPanel.cellSizeXText,
-        gridPanel.cellSizeYText,
-        gridPanel.spacingXText,
-        gridPanel.spacingYText
-    );
-}
-
-function createGridCallback(cellSizeXText, cellSizeYText, spacingXText, spacingYText){
-    return function(){
-        var selectedLayerListItem = mainWindow.layerGroup.layerList.selection;
-        if(selectedLayerListItem == undefined){ return; }
-        
-        var selectedLayerId = selectedLayerListItem.layerId;
-        
-        setLayerConfig(config, selectedLayerId, 'hasGrid', true);
-        setLayerConfig(config, selectedLayerId, 'gridCellSizeX', cellSizeXText.text);
-        setLayerConfig(config, selectedLayerId, 'gridCellSizeY', cellSizeYText.text);
-        setLayerConfig(config, selectedLayerId, 'gridSpacingX', spacingXText.text);
-        setLayerConfig(config, selectedLayerId, 'gridSpacingY', spacingYText.text);
-        
-        updateLayerStatusLabel(selectedLayerId);
-    }
-}
-
-
 function appendSerializePanel(appendTarget){
     var serializePanel = appendTarget.add(
         "Panel{\
@@ -481,16 +399,16 @@ var mainWindow = new Window (
 appendLayerList(mainWindow.layerGroup);
 
 appendCurrentLayerControls(mainWindow.optionGroup);
-appendSkipPanel(mainWindow.optionGroup);
-appendWidgetPanel(mainWindow.optionGroup);
+
+var skipWidgetGroup = mainWindow.optionGroup.add("Group{}");
+appendSkipPanel(skipWidgetGroup);
+appendWidgetPanel(skipWidgetGroup);
 
 var anchorPivorGroup = mainWindow.optionGroup.add("Group{}");
 appendAnchorPanel(anchorPivorGroup);
-appendPivotPanel(anchorPivorGroup);
-
-appendGridPanel(mainWindow.optionGroup);
-appendScrollRectPanel(mainWindow.optionGroup);
-appendSerializePanel(mainWindow.optionGroup);
+var pivotSerializeGroup = anchorPivorGroup.add("Group{orientation:'column'}");
+appendPivotPanel(pivotSerializeGroup);
+appendSerializePanel(pivotSerializeGroup);
 
 
 
