@@ -19,6 +19,9 @@
 //OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
+using System;
+using System.Text;
+
 namespace Ntreev.Library.Psd.Readers.ImageResources
 {
     [ResourceID("1060", DisplayName = "XmpMetadata")]
@@ -34,9 +37,41 @@ namespace Ntreev.Library.Psd.Readers.ImageResources
         {
             Properties props = new Properties(1);
 
-            props.Add("Xmp", reader.ReadAscii((int)Length));
+            // There seems a undocumented zero padding in XMP block...
+            // TODO: Find the XMP document that explains how it works
+            byte[] bytes = reader.ReadBytes((int) Length);
+            byte[] truncatedByteArray = _RemoveTailingZeros(bytes);
+            string xmpString = Encoding.UTF8.GetString(truncatedByteArray);
+            props.Add("Xmp", xmpString);
 
             value = props;
+        }
+
+        private byte[] _RemoveTailingZeros(byte[] source)
+        {
+            int zeroCount = 0;
+            for (int i = source.Length - 1; 0 <= i; i--)
+            {
+                if (source[i] == 0)
+                {
+                    zeroCount++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if (zeroCount == 0)
+            {
+                return source;
+            }
+            else
+            {
+                byte[] truncatedArray = new byte[source.Length - zeroCount];
+                Array.Copy(source, truncatedArray, truncatedArray.Length);
+                return truncatedArray;
+            }
         }
     }
 }
