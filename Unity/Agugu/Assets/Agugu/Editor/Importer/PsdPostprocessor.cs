@@ -26,7 +26,7 @@ public class PSDPostprocessor : AssetPostprocessor
                 continue;
             }
 
-            PsdImporter.ImportPsdAsPrefab(importedAssetPath, PsdParser.Parse(importedAssetPath), keepGameObject: false);
+            PsdImporter.ImportPsdAsPrefab(importedAssetPath, PsdParser.Parse(importedAssetPath));
         }
     }
 }

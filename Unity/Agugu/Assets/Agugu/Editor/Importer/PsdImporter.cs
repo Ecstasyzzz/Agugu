@@ -66,7 +66,10 @@ public class PsdImporter
             var canvasRectTransform = canvasGameObject.GetComponent<RectTransform>();
             canvasRectTransform.ForceUpdateRectTransforms();
 
-            ImportPsdAsPrefab(psdPath, uiTree, true, canvasRectTransform);
+            ImportPsdAsPrefab(psdPath, uiTree);
+            string prefabPath = _GetImportedPrefabSavePath(psdPath);
+            var uiInstance = GameObject.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath));
+            uiInstance.GetComponent<Transform>().SetParent(canvasRectTransform, worldPositionStays: false);
         }
     }
 
@@ -91,46 +94,27 @@ public class PsdImporter
     public static void ImportPsdAsPrefab
     (
         string     psdPath,
-        UiTreeRoot uiTree,
-        bool       keepGameObject = false,
-        Transform  parent         = null
+        UiTreeRoot uiTree
     )
     {
-        Executor.Add(AdInfinitum.Coroutine.Create(
-            _ImportPsdAsPrefabProcess(psdPath, uiTree, keepGameObject, parent)));
+        Executor.Add(AdInfinitum.Coroutine.Create(_ImportPsdAsPrefabProcess(psdPath, uiTree)));
     }
 
     private static IEnumerator _ImportPsdAsPrefabProcess
     (
         string     psdPath,
-        UiTreeRoot uiTree,
-        bool       keepGameObject = false,
-        Transform  parent         = null
+        UiTreeRoot uiTree
     )
     {
         _SaveTextureAsAsset(psdPath, uiTree);
 
         yield return null;
 
-        GameObject uiGameObject = _BuildUguiGameObjectTree(uiTree);
-        if (parent != null)
-        {
-            uiGameObject.GetComponent<Transform>().SetParent(parent, worldPositionStays: false);
-        }
+        GameObject uiGameObjectTree = _BuildUguiGameObjectTree(uiTree);
 
         var prefabPath = _GetImportedPrefabSavePath(psdPath);
-        _SavePrefab(prefabPath, uiGameObject);
-
-
-        if (keepGameObject)
-        {
-            var prefabGameObject = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-            PrefabUtility.ConnectGameObjectToPrefab(uiGameObject, prefabGameObject);
-        }
-        else
-        {
-            GameObject.DestroyImmediate(uiGameObject);
-        }
+        _SavePrefab(prefabPath, uiGameObjectTree);
+        GameObject.DestroyImmediate(uiGameObjectTree);
     }
 
     public static void _SaveTextureAsAsset(string psdPath, UiTreeRoot uiTree)
