@@ -5,7 +5,7 @@ using UnityEditor;
 
 public class PSDPostprocessor : AssetPostprocessor
 {
-    static void OnPostprocessAllAssets(string[] importedAssets, 
+    private static void OnPostprocessAllAssets(string[] importedAssets, 
                                        string[] deletedAssets, 
                                        string[] movedAssets, 
                                        string[] movedFromAssetPaths)
@@ -15,13 +15,9 @@ public class PSDPostprocessor : AssetPostprocessor
             string fileExtension = Path.GetExtension(importedAssetPath);
             bool isPsdFile = string.Equals(fileExtension, ".psd",
                                            StringComparison.OrdinalIgnoreCase);
+            bool isTracked = AguguConfig.Instance.IsTracked(importedAssetPath);
 
-            if (!isPsdFile)
-            {
-                continue;
-            }
-
-            if (!AguguConfig.Instance.IsTracked(importedAssetPath))
+            if (!isPsdFile || !isTracked)
             {
                 continue;
             }

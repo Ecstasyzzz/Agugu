@@ -86,26 +86,19 @@ public class PsdImporter
         canvasScaler.referenceResolution = new Vector2(width, height);
         canvasScaler.matchWidthOrHeight = 0;
 
-        var graphicRaycaster = canvasGameObject.AddComponent<GraphicRaycaster>();
+        canvasGameObject.AddComponent<GraphicRaycaster>();
 
         return canvasGameObject;
     }
 
-    public static void ImportPsdAsPrefab
-    (
-        string     psdPath,
-        UiTreeRoot uiTree
-    )
+    public static void ImportPsdAsPrefab(string psdPath, UiTreeRoot uiTree)
     {
         Executor.Add(AdInfinitum.Coroutine.Create(
             _ImportPsdAsPrefabProcess(psdPath, uiTree)));
     }
 
-    private static IEnumerator _ImportPsdAsPrefabProcess
-    (
-        string     psdPath,
-        UiTreeRoot uiTree
-    )
+    // Cannot import texture then get the Sprite reference on the same frame
+    private static IEnumerator _ImportPsdAsPrefabProcess(string psdPath, UiTreeRoot uiTree)
     {
         _SaveTextureAsAsset(psdPath, uiTree);
 
@@ -178,8 +171,7 @@ public class PsdImporter
         GameObject rootGameObject = uguiVisitor.Visit(uiTree);
         return rootGameObject;
     }
-
-
+    
     private static string _GetImportedPrefabSavePath(string psdPath)
     {
         string psdFolder = Path.GetDirectoryName(psdPath);
