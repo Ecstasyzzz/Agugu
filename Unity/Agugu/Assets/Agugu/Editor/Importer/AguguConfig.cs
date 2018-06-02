@@ -1,11 +1,13 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 using UnityEngine;
 using UnityEditor;
+using Object = UnityEngine.Object;
 
 
-[System.Serializable]
+[Serializable]
 public class FontName
 {
     public string Name;
@@ -33,23 +35,16 @@ public class AguguConfig : ScriptableObject
                 string assetGuid = AssetDatabase.FindAssets("t:AguguConfig").FirstOrDefault();
                 string assetPath = AssetDatabase.GUIDToAssetPath(assetGuid);
                 _instance = AssetDatabase.LoadAssetAtPath<AguguConfig>(assetPath);
-                _instance.BuildTable();
             }
             return _instance;
         }
     }
 
-    public void BuildTable()
-    {
-        _lookUpTable = new Dictionary<string, Font>();
-        _fontLookup.ForEach(entry => _lookUpTable.Add(entry.Name, entry.Font));
-    }
-
     public Font GetFont(string fontName)
     {
-        Font outValue;
-        _lookUpTable.TryGetValue(fontName, out outValue);
-        return outValue;
+        FontName targetEntry = _fontLookup.Find(entry =>
+            string.Equals(entry.Name, fontName, StringComparison.OrdinalIgnoreCase));
+        return targetEntry != null ? targetEntry.Font : null;
     }
 
     public bool IsTracked(string assetPath)
