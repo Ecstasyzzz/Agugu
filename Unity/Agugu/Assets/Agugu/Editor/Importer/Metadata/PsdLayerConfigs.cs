@@ -1,24 +1,27 @@
 ﻿using System.Collections.Generic;
 
-public class PsdLayerConfigs
+namespace Agugu.Editor
 {
-    private readonly Dictionary<int, Dictionary<string, string>> _layerConfigs = 
-        new Dictionary<int, Dictionary<string, string>>();
-
-    public void SetLayerConfig(int id, Dictionary<string, string> config)
+    public class PsdLayerConfigs
     {
-        _layerConfigs[id] = config;
-    }
+        private readonly Dictionary<int, Dictionary<string, string>> _layerConfigs =
+            new Dictionary<int, Dictionary<string, string>>();
 
-    public bool HasLayerConfig(int id)
-    {
-        return _layerConfigs.ContainsKey(id);
-    }
+        public void SetLayerConfig(int id, Dictionary<string, string> config)
+        {
+            _layerConfigs[id] = config;
+        }
 
-    public Dictionary<string, string> GetLayerConfig(int id)
-    {
-        Dictionary<string, string> config;
-        bool hasConfig = _layerConfigs.TryGetValue(id, out config);
-        return hasConfig ? config : new Dictionary<string, string>();
+        public bool HasLayerConfig(int id)
+        {
+            return _layerConfigs.ContainsKey(id);
+        }
+
+        public Dictionary<string, string> GetLayerConfig(int id)
+        {
+            Dictionary<string, string> config;
+            bool hasConfig = _layerConfigs.TryGetValue(id, out config);
+            return hasConfig ? config : new Dictionary<string, string>();
+        }
     }
 }

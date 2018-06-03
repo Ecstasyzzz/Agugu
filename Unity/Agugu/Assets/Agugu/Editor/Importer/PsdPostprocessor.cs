@@ -1,28 +1,36 @@
 ﻿using System;
 using System.IO;
-
 using UnityEditor;
 
-public class PSDPostprocessor : AssetPostprocessor
+namespace Agugu.Editor
 {
-    private static void OnPostprocessAllAssets(string[] importedAssets, 
-                                       string[] deletedAssets, 
-                                       string[] movedAssets, 
-                                       string[] movedFromAssetPaths)
+    public class PSDPostprocessor : AssetPostprocessor
     {
-        foreach (string importedAssetPath in importedAssets)
+        private static void OnPostprocessAllAssets(string[] importedAssets,
+            string[]                                        deletedAssets,
+            string[]                                        movedAssets,
+            string[]                                        movedFromAssetPaths)
         {
-            string fileExtension = Path.GetExtension(importedAssetPath);
-            bool isPsdFile = string.Equals(fileExtension, ".psd",
-                                           StringComparison.OrdinalIgnoreCase);
-            bool isTracked = AguguConfig.Instance.IsTracked(importedAssetPath);
-
-            if (!isPsdFile || !isTracked)
+            foreach (string importedAssetPath in importedAssets)
             {
-                continue;
-            }
+                string fileExtension = Path.GetExtension(importedAssetPath);
+                bool isPsdFile = string.Equals(fileExtension, ".psd",
+                    StringComparison.OrdinalIgnoreCase);
 
-            PsdImporter.ImportPsdAsPrefab(importedAssetPath, PsdParser.Parse(importedAssetPath));
+                if (!isPsdFile)
+                {
+                    continue;
+                }
+
+                bool isTracked = AguguConfig.Instance.IsTracked(importedAssetPath);
+
+                if (!isTracked)
+                {
+                    continue;
+                }
+
+                PsdImporter.ImportPsdAsPrefab(importedAssetPath, PsdParser.Parse(importedAssetPath));
+            }
         }
     }
 }

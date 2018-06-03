@@ -1,13 +1,18 @@
 ﻿using UnityEngine;
 using UnityEditor;
 
-[CustomEditor(typeof(PsdLayerIdTag))]
-public class PsdLayerIdTagEditor : Editor
+using Agugu.Runtime;
+
+namespace Agugu.Editor
 {
-    public override void OnInspectorGUI()
+    [CustomEditor(typeof(PsdLayerIdTag))]
+    public class PsdLayerIdTagEditor : UnityEditor.Editor
     {
-        GUI.enabled = false;
-        DrawDefaultInspector();
-        GUI.enabled = true;
+        public override void OnInspectorGUI()
+        {
+            GUI.enabled = false;
+            DrawDefaultInspector();
+            GUI.enabled = true;
+        }
     }
 }

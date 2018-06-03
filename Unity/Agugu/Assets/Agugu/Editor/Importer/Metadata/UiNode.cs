@@ -2,91 +2,112 @@
 
 using UnityEngine;
 
-
-public class UiNode
+namespace Agugu.Editor
 {
-    public int Id;
-    public string Name;
-    public bool IsVisible;
-    public bool IsSkipped;
-
-    public Vector2 Pivot;
-    public XAnchorType XAnchor;
-    public YAnchorType YAnchor;
-    public Rect Rect;
-
-    public UiNode() { }
-
-    public UiNode(UiNode copySource)
+    public class UiNode
     {
-        Id = copySource.Id;
-        Name = copySource.Name;
-        IsVisible = copySource.IsVisible;
-        IsSkipped = copySource.IsSkipped;
+        public int    Id;
+        public string Name;
+        public bool   IsVisible;
+        public bool   IsSkipped;
 
-        Pivot = copySource.Pivot;
-        XAnchor = copySource.XAnchor;
-        YAnchor = copySource.YAnchor;
-        Rect = copySource.Rect;
+        public Vector2     Pivot;
+        public XAnchorType XAnchor;
+        public YAnchorType YAnchor;
+        public Rect        Rect;
+
+        public UiNode()
+        {
+        }
+
+        public UiNode(UiNode copySource)
+        {
+            Id = copySource.Id;
+            Name = copySource.Name;
+            IsVisible = copySource.IsVisible;
+            IsSkipped = copySource.IsSkipped;
+
+            Pivot = copySource.Pivot;
+            XAnchor = copySource.XAnchor;
+            YAnchor = copySource.YAnchor;
+            Rect = copySource.Rect;
+        }
+
+        public virtual void Accept(IUiNodeVisitor visitor)
+        {
+        }
     }
 
-    public virtual void Accept(IUiNodeVisitor visitor) { }
-}
 
-
-public class GroupNode : UiNode
-{
-    public List<UiNode> Children = new List<UiNode>();
-
-    public bool HasScrollRect;
-    public bool IsScrollRectHorizontal;
-    public bool IsScrollRectVertical;
-
-    public bool HasGrid;
-    public Vector2 CellSize;
-    public Vector2 Spacing;
-
-    public GroupNode() { }
-    public GroupNode(UiNode baseNode) : base(baseNode) { }
-
-    public void AddChild(UiNode node)
+    public class GroupNode : UiNode
     {
-        Children.Add(node);
+        public List<UiNode> Children = new List<UiNode>();
+
+        public bool HasScrollRect;
+        public bool IsScrollRectHorizontal;
+        public bool IsScrollRectVertical;
+
+        public bool    HasGrid;
+        public Vector2 CellSize;
+        public Vector2 Spacing;
+
+        public GroupNode()
+        {
+        }
+
+        public GroupNode(UiNode baseNode) : base(baseNode)
+        {
+        }
+
+        public void AddChild(UiNode node)
+        {
+            Children.Add(node);
+        }
+
+        public override void Accept(IUiNodeVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
 
-    public override void Accept(IUiNodeVisitor visitor)
+    public class ImageNode : UiNode
     {
-        visitor.Visit(this);
+        public ISpriteSource SpriteSource;
+        public WidgetType    WidgetType;
+
+        public ImageNode()
+        {
+        }
+
+        public ImageNode(UiNode baseNode) : base(baseNode)
+        {
+        }
+
+        public override void Accept(IUiNodeVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
-}
 
-public class ImageNode : UiNode
-{
-    public ISpriteSource SpriteSource;
-    public WidgetType WidgetType;
-
-    public ImageNode() { }
-    public ImageNode(UiNode baseNode) : base(baseNode) { }
-
-    public override void Accept(IUiNodeVisitor visitor)
+    public class TextNode : UiNode
     {
-        visitor.Visit(this);
-    }
-}
+        public float  FontSize;
+        public string FontName;
 
-public class TextNode : UiNode
-{
-    public float FontSize;
-    public string FontName;
+        public string Text;
+        public Color  TextColor;
 
-    public string Text;
-    public Color TextColor;
+        public TextNode()
+        {
+        }
 
-    public TextNode() { }
-    public TextNode(UiNode baseNode) : base(baseNode) { }
+        public TextNode(UiNode baseNode) : base(baseNode)
+        {
+        }
 
-    public override void Accept(IUiNodeVisitor visitor)
-    {
-        visitor.Visit(this);
+        public override void Accept(IUiNodeVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
 }

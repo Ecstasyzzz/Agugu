@@ -3,48 +3,52 @@
 using UnityEngine;
 using UnityEditor;
 
-
-public class SaveTextureVisitor : IUiNodeVisitor
+namespace Agugu.Editor
 {
-    private readonly string _basePath;
-    private readonly string _prefix;
-
-    public SaveTextureVisitor(string basePath, string prefix = "")
+    public class SaveTextureVisitor : IUiNodeVisitor
     {
-        _basePath = basePath;
-        _prefix = prefix;
-    }
+        private readonly string _basePath;
+        private readonly string _prefix;
 
-    public void Visit(UiTreeRoot root)
-    {
-        root.Children.ForEach(child => child.Accept(this));
-    }
-
-    public void Visit(GroupNode node)
-    {
-        if (!node.IsSkipped)
+        public SaveTextureVisitor(string basePath, string prefix = "")
         {
-            node.Children.ForEach(child => child.Accept(new SaveTextureVisitor(_basePath, _prefix + node.Name)));
+            _basePath = basePath;
+            _prefix = prefix;
         }
-    }
 
-    public void Visit(TextNode node) { }
-
-    public void Visit(ImageNode node)
-    {
-        if (!node.IsSkipped &&
-             node.SpriteSource is InMemoryTextureSpriteSource)
+        public void Visit(UiTreeRoot root)
         {
-            var inMemoryTexture = (InMemoryTextureSpriteSource) node.SpriteSource;
+            root.Children.ForEach(child => child.Accept(this));
+        }
 
-            string outputTextureFilename = string.Format(_prefix + "{0}.png", node.Name);
-            string outputTexturePath = Path.Combine(_basePath, outputTextureFilename);
+        public void Visit(GroupNode node)
+        {
+            if (!node.IsSkipped)
+            {
+                node.Children.ForEach(child => child.Accept(new SaveTextureVisitor(_basePath, _prefix + node.Name)));
+            }
+        }
 
-            File.WriteAllBytes(outputTexturePath, inMemoryTexture.Texture2D.EncodeToPNG());
+        public void Visit(TextNode node)
+        {
+        }
 
-            AssetDatabase.Refresh();
+        public void Visit(ImageNode node)
+        {
+            if (!node.IsSkipped &&
+                node.SpriteSource is InMemoryTextureSpriteSource)
+            {
+                var inMemoryTexture = (InMemoryTextureSpriteSource) node.SpriteSource;
 
-            node.SpriteSource = new AssetSpriteSource(outputTexturePath);
+                string outputTextureFilename = string.Format(_prefix + "{0}.png", node.Name);
+                string outputTexturePath = Path.Combine(_basePath, outputTextureFilename);
+
+                File.WriteAllBytes(outputTexturePath, inMemoryTexture.Texture2D.EncodeToPNG());
+
+                AssetDatabase.Refresh();
+
+                node.SpriteSource = new AssetSpriteSource(outputTexturePath);
+            }
         }
     }
 }

@@ -1,6 +1,9 @@
-﻿public interface IUiNodeVisitor
+﻿namespace Agugu.Editor
 {
-    void Visit(GroupNode node);
-    void Visit(TextNode node);
-    void Visit(ImageNode node);
+    public interface IUiNodeVisitor
+    {
+        void Visit(GroupNode node);
+        void Visit(TextNode  node);
+        void Visit(ImageNode node);
+    }
 }

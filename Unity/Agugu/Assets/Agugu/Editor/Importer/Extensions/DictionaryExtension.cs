@@ -1,11 +1,14 @@
 ﻿using System.Collections.Generic;
 
-public static class DictionaryExtension
+namespace Agugu.Editor
 {
-    public static TValue GetValueOrDefault<TKey, TValue>(this Dictionary<TKey, TValue> dict,
-        TKey key)
+    public static class DictionaryExtension
     {
-        TValue value;
-        return dict.TryGetValue(key, out value) ? value : default(TValue);
+        public static TValue GetValueOrDefault<TKey, TValue>(this Dictionary<TKey, TValue> dict,
+            TKey                                                                           key)
+        {
+            TValue value;
+            return dict.TryGetValue(key, out value) ? value : default(TValue);
+        }
     }
 }

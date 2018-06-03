@@ -1,6 +1,9 @@
 ﻿using UnityEngine;
 
-public class PsdLayerIdTag : MonoBehaviour
+namespace Agugu.Runtime
 {
-    public int LayerId;
+    public class PsdLayerIdTag : MonoBehaviour
+    {
+        public int LayerId;
+    }
 }
