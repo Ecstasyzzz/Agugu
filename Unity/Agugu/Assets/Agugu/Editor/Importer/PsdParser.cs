@@ -34,7 +34,9 @@ namespace Agugu.Editor
     public enum WidgetType
     {
         None,
-        Button
+        Image,
+        Text,
+        EmptyGraphic
     }
 
     public class PsdParser
@@ -274,7 +276,7 @@ namespace Agugu.Editor
             else
             {
                 string widgetTypeString = config.GetValueOrDefault(WidgetTypePropertyTag);
-                WidgetType widgetType = string.Equals(widgetTypeString, "button") ? WidgetType.Button : WidgetType.None;
+                WidgetType widgetType = _GetWidgetType(widgetTypeString);
 
                 Texture2D texture2D = GetTexture2DFromPsdLayer(layer);
 
@@ -344,6 +346,17 @@ namespace Agugu.Editor
             }
 
             return Color.black;
+        }
+
+        private static WidgetType _GetWidgetType(string widgetString)
+        {
+            switch (widgetString)
+            {
+                case "image": return WidgetType.Image;
+                case "text": return WidgetType.Text;
+                case "empty": return WidgetType.EmptyGraphic;
+                default: return WidgetType.None;
+            }
         }
 
         public static Texture2D GetTexture2DFromPsdLayer(IPsdLayer layer)

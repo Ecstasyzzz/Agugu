@@ -230,7 +230,7 @@ function createSkipLayerCallback(isSkipped){
 
 
 // Widget Type
-const widgetType = ['image', 'text'];
+const widgetType = ['image', 'text', 'empty'];
 function appendWidgetPanel(appendTarget){
     var widgetTypePanel = appendTarget.add(
         "Panel{\

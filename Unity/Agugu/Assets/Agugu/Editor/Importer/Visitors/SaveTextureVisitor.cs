@@ -36,6 +36,7 @@ namespace Agugu.Editor
         public void Visit(ImageNode node)
         {
             if (!node.IsSkipped &&
+                node.WidgetType != WidgetType.EmptyGraphic &&
                 node.SpriteSource is InMemoryTextureSpriteSource)
             {
                 var inMemoryTexture = (InMemoryTextureSpriteSource) node.SpriteSource;

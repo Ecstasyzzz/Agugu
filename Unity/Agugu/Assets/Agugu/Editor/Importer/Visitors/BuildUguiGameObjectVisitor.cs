@@ -103,15 +103,22 @@ namespace Agugu.Editor
         {
             if (node.IsSkipped) { return; }
 
-            var importedSprite = node.SpriteSource.GetSprite();
-
             var uiGameObject = new GameObject(node.Name);
             var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
-            var image = uiGameObject.AddComponent<Image>();
-            image.sprite = importedSprite;
+
+            if (node.WidgetType != WidgetType.EmptyGraphic)
+            {
+                Sprite importedSprite = node.SpriteSource.GetSprite();
+                var image = uiGameObject.AddComponent<Image>();
+                image.sprite = importedSprite;
+            }
+            else
+            {
+                uiGameObject.AddComponent<EmptyGraphic>();
+            }
 
             var layerIdTag = uiGameObject.AddComponent<PsdLayerIdTag>();
-            layerIdTag.LayerId = node.Id;
+                layerIdTag.LayerId = node.Id;
 
             _SetRectTransform
             (
