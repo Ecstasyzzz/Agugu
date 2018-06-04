@@ -9,11 +9,18 @@ namespace Agugu.Editor
     {
         private readonly Rect _parentRect;
         private readonly RectTransform _parent;
+        private readonly float _basePixelPerInch;
 
-        public BuildUguiGameObjectVisitor(Rect parentRect, RectTransform parent)
+        public BuildUguiGameObjectVisitor
+        (
+            Rect parentRect, 
+            RectTransform parent,
+            float basePixelPerInch
+        )
         {
             _parentRect = parentRect;
             _parent = parent;
+            _basePixelPerInch = basePixelPerInch;
         }
 
         public GameObject Visit(UiTreeRoot root)
@@ -31,7 +38,7 @@ namespace Agugu.Editor
             layerIdTag.LayerId = -1;
 
             var baseRect = new Rect(0, 0, root.Width, root.Height);
-            var childrenVisitor = new BuildUguiGameObjectVisitor(baseRect, uiRootRectTransform);
+            var childrenVisitor = new BuildUguiGameObjectVisitor(baseRect, uiRootRectTransform, _basePixelPerInch);
             root.Children.ForEach(child => child.Accept(childrenVisitor));
 
             return uiRootGameObject;
@@ -56,7 +63,7 @@ namespace Agugu.Editor
                 node.Pivot
             );
 
-            var childrenVisitor = new BuildUguiGameObjectVisitor(node.Rect, groupRectTransform);
+            var childrenVisitor = new BuildUguiGameObjectVisitor(node.Rect, groupRectTransform, _basePixelPerInch);
             node.Children.ForEach(child => child.Accept(childrenVisitor));
 
             groupGameObject.SetActive(node.IsVisible);
@@ -82,15 +89,20 @@ namespace Agugu.Editor
                 Debug.LogWarningFormat("Font not found: {0}, at {1}", node.FontName, node.Name);
             }
             text.font = font;
-            // TODO: Wild guess, cannot find any reference about Unity font size
-            // 25/6
-            text.fontSize = (int)(node.FontSize / 4.16);
+            // Photoshop uses 72 points per inch
+            text.fontSize = (int)(node.FontSize / 72 * _basePixelPerInch);
             text.resizeTextForBestFit = true;
+
+            var originalHeight = node.Rect.height;
+            var halfHeight = originalHeight / 2;
+            var adjustedRect = new Rect(node.Rect);
+            adjustedRect.yMin -= halfHeight;
+            adjustedRect.yMax += halfHeight;
 
             _SetRectTransform
             (
                 uiRectTransform,
-                node.Rect, _parentRect,
+                adjustedRect, _parentRect,
                 _GetAnchorMin(node), _GetAnchorMax(node),
                 node.Pivot
             );

@@ -9,6 +9,7 @@ using UnityEngine;
 
 using Ntreev.Library.Psd;
 using Ntreev.Library.Psd.Readers.ImageResources;
+using Ntreev.Library.Psd.Readers.LayerResources;
 using Ntreev.Library.Psd.Structures;
 
 namespace Agugu.Editor
@@ -80,6 +81,12 @@ namespace Agugu.Editor
                 uiTree.Width = document.Width;
                 uiTree.Height = document.Height;
                 uiTree.Configs = _ParseConfig(document);
+
+                var imageResource = document.ImageResources;
+                var resolutionProperty = imageResource["Resolution"] as Reader_ResolutionInfo;
+                int horizontalResolution = Convert.ToInt32(resolutionProperty.Value["HorizontalRes"]);
+
+                uiTree.HorizontalPixelPerInch = horizontalResolution;
 
                 foreach (PsdLayer layer in document.Childs)
                 {
@@ -255,6 +262,8 @@ namespace Agugu.Editor
                 var fontIndex = (int) firstStyelSheetData["Font"];
 
                 var fontSize = _GetFontSizeFromStyelSheetData(firstStyelSheetData);
+                // TODO: Fix this hack
+                fontSize = fontSize / 75 * 18;
                 var textColor = _GetTextColorFromStyelSheetData(firstStyelSheetData);
 
                 var documentResources = (Properties) engineData["DocumentResources"];

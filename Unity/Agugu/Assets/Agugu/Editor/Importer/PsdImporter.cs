@@ -169,7 +169,7 @@ namespace Agugu.Editor
 
         private static GameObject _BuildUguiGameObjectTree(UiTreeRoot uiTree)
         {
-            var uguiVisitor = new BuildUguiGameObjectVisitor(default(Rect), null);
+            var uguiVisitor = new BuildUguiGameObjectVisitor(default(Rect), null, uiTree.HorizontalPixelPerInch);
             GameObject rootGameObject = uguiVisitor.Visit(uiTree);
             return rootGameObject;
         }

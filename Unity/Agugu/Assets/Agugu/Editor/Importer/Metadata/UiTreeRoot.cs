@@ -9,6 +9,8 @@ namespace Agugu.Editor
         public float Width;
         public float Height;
 
+        public float HorizontalPixelPerInch;
+
         public PsdLayerConfigs Configs  = new PsdLayerConfigs();
         public List<UiNode>    Children = new List<UiNode>();
 
