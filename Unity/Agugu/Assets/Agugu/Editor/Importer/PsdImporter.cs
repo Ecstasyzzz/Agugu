@@ -62,17 +62,25 @@ namespace Agugu.Editor
 
             if (!string.IsNullOrEmpty(psdPath))
             {
-                UiTreeRoot uiTree = PsdParser.Parse(psdPath);
-
-                var canvasGameObject = _CreateCanvasGameObject(uiTree.Width, uiTree.Height);
-                var canvasRectTransform = canvasGameObject.GetComponent<RectTransform>();
-                canvasRectTransform.ForceUpdateRectTransforms();
-
-                ImportPsdAsPrefab(psdPath, uiTree);
-                string prefabPath = _GetImportedPrefabSavePath(psdPath);
-                var uiInstance = GameObject.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath));
-                uiInstance.GetComponent<Transform>().SetParent(canvasRectTransform, worldPositionStays: false);
+                Executor.Add(AdInfinitum.Coroutine.Create(
+                    _ImportSelectionWithCanvasProcess(psdPath)));
             }
+        }
+
+        private static IEnumerator _ImportSelectionWithCanvasProcess(string psdPath)
+        {
+            UiTreeRoot uiTree = PsdParser.Parse(psdPath);
+
+            var canvasGameObject = _CreateCanvasGameObject(uiTree.Width, uiTree.Height);
+            var canvasRectTransform = canvasGameObject.GetComponent<RectTransform>();
+            canvasRectTransform.ForceUpdateRectTransforms();
+
+            yield return _ImportPsdAsPrefabProcess(psdPath, uiTree);
+
+            string prefabPath = _GetImportedPrefabSavePath(psdPath);
+            var uiPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            var uiInstance = GameObject.Instantiate(uiPrefab);
+            uiInstance.GetComponent<Transform>().SetParent(canvasRectTransform, worldPositionStays: false);
         }
 
         private static GameObject _CreateCanvasGameObject(float width, float height)
