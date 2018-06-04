@@ -19,10 +19,6 @@
 //OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-
 namespace Ntreev.Library.Psd.Readers.ImageResources
 {
     [ResourceID("1005", DisplayName = "Resolution")]
@@ -31,9 +27,20 @@ namespace Ntreev.Library.Psd.Readers.ImageResources
         public Reader_ResolutionInfo(PsdReader reader, long length)
             : base(reader, length)
         {
-            
         }
 
+        /*
+        * typedef struct _ResolutionInfo
+        * {
+        *     LONG hRes;               Fixed-point number: pixels per inch 
+        *     WORD hResUnit;           1=pixels per inch, 2=pixels per centimeter 
+        *     WORD WidthUnit;          1=in, 2=cm, 3=pt, 4=picas, 5=columns 
+        *     LONG vRes;               Fixed-point number: pixels per inch 
+        *     WORD vResUnit;           1=pixels per inch, 2=pixels per centimeter 
+        *     WORD HeightUnit;         1=in, 2=cm, 3=pt, 4=picas, 5=columns 
+        * }
+        * RESOLUTIONINFO;
+        */
         protected override void ReadValue(PsdReader reader, object userData, out IProperties value)
         {
             Properties props = new Properties(6);
