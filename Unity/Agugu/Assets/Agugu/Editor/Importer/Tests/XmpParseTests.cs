@@ -107,7 +107,7 @@ namespace Agugu.Editor
         [Test]
         public void XMPParser_ParseDocument_ListElements()
         {
-            PsdLayerConfigs playerConfig = PsdParser.ParseXMP(xmpString);
+            PsdLayerConfigSet playerConfig = PsdParser.ParseXmp(xmpString);
 
             Assert.True(playerConfig.HasLayerConfig(13));
             Assert.True(playerConfig.HasLayerConfig(14));

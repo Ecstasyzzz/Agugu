@@ -74,7 +74,7 @@ namespace Agugu.Editor
                 uiTree.Height = document.Height;
                 uiTree.Configs = _ParseConfig(document);
 
-                Dictionary<string, string> config = uiTree.Configs.GetLayerConfig(DocumentRootMagicLayerId);
+                PsdLayerConfig config = uiTree.Configs.GetLayerConfig(DocumentRootMagicLayerId);
 
                 uiTree.Pivot = _GetPivot(config);
 
@@ -96,7 +96,7 @@ namespace Agugu.Editor
             }
         }
 
-        private static PsdLayerConfigs _ParseConfig(PsdDocument document)
+        private static PsdLayerConfigSet _ParseConfig(PsdDocument document)
         {
             IProperties imageResources = document.ImageResources;
             if (imageResources.Contains("XmpMetadata"))
@@ -104,17 +104,17 @@ namespace Agugu.Editor
                 var xmpImageResource = imageResources["XmpMetadata"] as Reader_XmpMetadata;
                 var xmpValue = xmpImageResource.Value["Xmp"] as string;
 
-                return ParseXMP(xmpValue);
+                return ParseXmp(xmpValue);
             }
             else
             {
-                return new PsdLayerConfigs();
+                return new PsdLayerConfigSet();
             }
         }
 
-        public static PsdLayerConfigs ParseXMP(string xmpString)
+        public static PsdLayerConfigSet ParseXmp(string xmpString)
         {
-            var result = new PsdLayerConfigs();
+            var result = new PsdLayerConfigSet();
             var xmp = XDocument.Parse(xmpString);
 
             XElement configRoot = xmp.Descendants(_aguguNamespace + ConfigRootTag).FirstOrDefault();
@@ -161,7 +161,7 @@ namespace Agugu.Editor
                     propertyDictionary.Add(propertyName, propertyValue);
                 }
 
-                result.SetLayerConfig(layerId, propertyDictionary);
+                result.SetLayerConfig(layerId, new PsdLayerConfig(propertyDictionary));
             }
 
             return result;
@@ -173,15 +173,14 @@ namespace Agugu.Editor
             string name = layer.Name;
             bool isVisible = layer.IsVisible;
 
-            var config = tree.Configs.GetLayerConfig(id);
+            PsdLayerConfig config = tree.Configs.GetLayerConfig(id);
 
-            bool isSkipped = _GetLayerConfigAsBool(config, IsSkippedPropertyTag);
+            bool isSkipped = config.GetLayerConfigAsBool(IsSkippedPropertyTag);
 
-            Vector2 pivot = new Vector2(_GetLayerConfigAsFloat(config, XPivotPropertyTag, 0.5f),
-                _GetLayerConfigAsFloat(config, YPivotPropertyTag, 0.5f));
+            Vector2 pivot = _GetPivot(config);
 
-            XAnchorType xAnchor = _GetXAnchorType(config.GetValueOrDefault(XAnchorPropertyTag));
-            YAnchorType yAnchor = _GetYAnchorType(config.GetValueOrDefault(YAnchorPropertyTag));
+            XAnchorType xAnchor = _GetXAnchorType(config);
+            YAnchorType yAnchor = _GetYAnchorType(config);
 
             var rect = new Rect
             {
@@ -236,7 +235,7 @@ namespace Agugu.Editor
                 var fontSize = _GetFontSizeFromStyleSheetData(firstStyleSheetData);
                 // TODO: Fix this hack
                 fontSize = fontSize / 75 * 18;
-                var textColor = _GetTextColorFromStyelSheetData(firstStyleSheetData);
+                var textColor = _GetTextColorFromStyleSheetData(firstStyleSheetData);
 
                 var documentResources = (Properties) engineData["DocumentResources"];
                 var fontSet = (ArrayList) documentResources["FontSet"];
@@ -256,8 +255,7 @@ namespace Agugu.Editor
             }
             else
             {
-                string widgetTypeString = config.GetValueOrDefault(WidgetTypePropertyTag);
-                WidgetType widgetType = _GetWidgetType(widgetTypeString);
+                WidgetType widgetType = config.GetLayerConfigAsWidgetType(WidgetTypePropertyTag);
 
                 Texture2D texture2D = GetTexture2DFromPsdLayer(layer);
 
@@ -269,25 +267,32 @@ namespace Agugu.Editor
             }
         }
 
-        private static bool _GetLayerConfigAsBool(Dictionary<string, string> layerConfig, string tag)
+
+        // RectTransform
+        private static Vector2 _GetPivot(PsdLayerConfig config)
         {
-            string tagValue = layerConfig.GetValueOrDefault(tag);
-            return string.Equals(tagValue, "true", StringComparison.OrdinalIgnoreCase);
+            float pivotX = config.GetLayerConfigAsFloat(XPivotPropertyTag, 0.5f);
+            float pivotY = config.GetLayerConfigAsFloat(YPivotPropertyTag, 0.5f);
+            return new Vector2(pivotX, pivotY);
         }
 
-        private static float _GetLayerConfigAsFloat(Dictionary<string, string> layerConfig, string tag)
+        private static XAnchorType _GetXAnchorType(PsdLayerConfig config)
         {
-            string tagValue = layerConfig.GetValueOrDefault(tag);
-            return float.Parse(tagValue);
+            return config.GetLayerConfigAsXAnchorType(XAnchorPropertyTag);
         }
 
-        private static float _GetLayerConfigAsFloat(Dictionary<string, string> layerConfig, string tag,
-            float                                                              defaultValue)
+        private static YAnchorType _GetYAnchorType(PsdLayerConfig config)
         {
-            string tagValue = layerConfig.GetValueOrDefault(tag);
-            return !string.IsNullOrEmpty(tagValue) ? float.Parse(tagValue) : defaultValue;
+            return config.GetLayerConfigAsYAnchorType(YAnchorPropertyTag);
         }
 
+        private static WidgetType _GetWidgetType(PsdLayerConfig config)
+        {
+            return config.GetLayerConfigAsWidgetType(WidgetTypePropertyTag);
+        }
+
+
+        // Layer Type
         private static bool _IsGroupLayer(PsdLayer psdLayer)
         {
             return psdLayer.SectionType == SectionType.Opend ||
@@ -299,6 +304,8 @@ namespace Agugu.Editor
             return psdLayer.Resources.Contains("TySh");
         }
 
+
+        // Text
         private static float _GetFontSizeFromStyleSheetData(Properties styleSheetData)
         {
             // Font size could be omitted TODO: Find official default Value
@@ -310,7 +317,7 @@ namespace Agugu.Editor
             return 42;
         }
 
-        private static Color _GetTextColorFromStyelSheetData(Properties styleSheetData)
+        private static Color _GetTextColorFromStyleSheetData(Properties styleSheetData)
         {
             // FillColor also could be omitted
             if (styleSheetData.Contains("FillColor"))
@@ -329,17 +336,8 @@ namespace Agugu.Editor
             return Color.black;
         }
 
-        private static WidgetType _GetWidgetType(string widgetString)
-        {
-            switch (widgetString)
-            {
-                case "image": return WidgetType.Image;
-                case "text": return WidgetType.Text;
-                case "empty": return WidgetType.EmptyGraphic;
-                default: return WidgetType.None;
-            }
-        }
-
+        
+        // Image
         public static Texture2D GetTexture2DFromPsdLayer(IPsdLayer layer)
         {
             IChannel[] channels = layer.Channels;
@@ -378,46 +376,6 @@ namespace Agugu.Editor
             outputTexture2D.Apply();
 
             return outputTexture2D;
-        }
-
-        private static Vector2 _GetPivot(Dictionary<string, string> config)
-        {
-            return new Vector2(_GetLayerConfigAsFloat(config, XPivotPropertyTag, 0.5f),
-                _GetLayerConfigAsFloat(config, YPivotPropertyTag, 0.5f));
-        }
-
-        private static XAnchorType _GetXAnchorType(Dictionary<string, string> config)
-        {
-            return _GetXAnchorType(config.GetValueOrDefault(XAnchorPropertyTag));
-        }
-
-        private static XAnchorType _GetXAnchorType(string value)
-        {
-            switch (value)
-            {
-                case "left": return XAnchorType.Left;
-                case "center": return XAnchorType.Center;
-                case "right": return XAnchorType.Right;
-                case "stretch": return XAnchorType.Stretch;
-                default: return XAnchorType.None;
-            }
-        }
-
-        private static YAnchorType _GetYAnchorType(Dictionary<string, string> config)
-        {
-            return _GetYAnchorType(config.GetValueOrDefault(YAnchorPropertyTag));
-        }
-
-        private static YAnchorType _GetYAnchorType(string value)
-        {
-            switch (value)
-            {
-                case "top": return YAnchorType.Top;
-                case "middle": return YAnchorType.Middle;
-                case "bottom": return YAnchorType.Bottom;
-                case "stretch": return YAnchorType.Stretch;
-                default: return YAnchorType.None;
-            }
         }
     }
 }
