@@ -39,14 +39,6 @@ namespace Agugu.Editor
     {
         public List<UiNode> Children = new List<UiNode>();
 
-        public bool HasScrollRect;
-        public bool IsScrollRectHorizontal;
-        public bool IsScrollRectVertical;
-
-        public bool    HasGrid;
-        public Vector2 CellSize;
-        public Vector2 Spacing;
-
         public GroupNode() { }
         public GroupNode(UiNode baseNode) : base(baseNode) { }
 

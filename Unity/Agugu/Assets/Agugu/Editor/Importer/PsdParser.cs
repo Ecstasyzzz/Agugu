@@ -9,7 +9,6 @@ using UnityEngine;
 
 using Ntreev.Library.Psd;
 using Ntreev.Library.Psd.Readers.ImageResources;
-using Ntreev.Library.Psd.Readers.LayerResources;
 using Ntreev.Library.Psd.Structures;
 
 namespace Agugu.Editor
@@ -62,16 +61,7 @@ namespace Agugu.Editor
 
         private const string XPivotPropertyTag = "xPivot";
         private const string YPivotPropertyTag = "yPivot";
-
-        private const string HasScrollRectPropertyTag          = "hasScrollRect";
-        private const string IsScrollRectHorizontalPropertyTag = "isScrollRectHorizontal";
-        private const string IsScrollRectVerticalPropertyTag   = "isScrollRectVertical";
-
-        private const string HasGridPropertyTag       = "hasGrid";
-        private const string GridCellSizeXPropertyTag = "gridCellSizeX";
-        private const string GridCellSizeYPropertyTag = "gridCellSizeY";
-        private const string GridSpacingXPropertyTag  = "gridSpacingX";
-        private const string GridSpacingYPropertyTag  = "gridSpacingY";
+        
 
         public static UiTreeRoot Parse(string psdPath)
         {
@@ -219,42 +209,15 @@ namespace Agugu.Editor
 
             if (isGroup)
             {
-                bool hasScrollRect = _GetLayerConfigAsBool(config, HasScrollRectPropertyTag);
-                bool isScrollRectHorizontal = _GetLayerConfigAsBool(config, IsScrollRectHorizontalPropertyTag);
-                bool isScrollRectVertical = _GetLayerConfigAsBool(config, IsScrollRectVerticalPropertyTag);
-
-                bool hasGrid = _GetLayerConfigAsBool(config, HasGridPropertyTag);
-                Vector2 gridCellSize = Vector2.zero;
-                Vector2 gridSpacing = Vector2.zero;
-
-                if (hasGrid)
-                {
-                    float gridCellSizeX = _GetLayerConfigAsFloat(config, GridCellSizeXPropertyTag);
-                    float gridCellSizeY = _GetLayerConfigAsFloat(config, GridCellSizeYPropertyTag);
-                    float gridSpacingX = _GetLayerConfigAsFloat(config, GridSpacingXPropertyTag);
-                    float gridSpacingY = _GetLayerConfigAsFloat(config, GridSpacingYPropertyTag);
-
-                    gridCellSize = new Vector2(gridCellSizeX, gridCellSizeY);
-                    gridSpacing = new Vector2(gridSpacingX, gridSpacingY);
-                }
-
                 var children = new List<UiNode>();
 
-                foreach (PsdLayer childlayer in layer.Childs)
+                foreach (PsdLayer childLayer in layer.Childs)
                 {
-                    children.Add(_ParsePsdLayerRecursive(tree, childlayer));
+                    children.Add(_ParsePsdLayerRecursive(tree, childLayer));
                 }
 
                 return new GroupNode(baseUiNode)
                 {
-                    HasScrollRect = hasScrollRect,
-                    IsScrollRectHorizontal = isScrollRectHorizontal,
-                    IsScrollRectVertical = isScrollRectVertical,
-
-                    HasGrid = hasGrid,
-                    CellSize = gridCellSize,
-                    Spacing = gridSpacing,
-
                     Children = children
                 };
             }
@@ -266,14 +229,14 @@ namespace Agugu.Editor
                 var runArray = (ArrayList) styleRun["RunArray"];
                 var firstRunArrayElement = (Properties) runArray[0];
                 var firstStyleSheet = (Properties) firstRunArrayElement["StyleSheet"];
-                var firstStyelSheetData = (Properties) firstStyleSheet["StyleSheetData"];
+                var firstStyleSheetData = (Properties) firstStyleSheet["StyleSheetData"];
 
-                var fontIndex = (int) firstStyelSheetData["Font"];
+                var fontIndex = (int)firstStyleSheetData["Font"];
 
-                var fontSize = _GetFontSizeFromStyleSheetData(firstStyelSheetData);
+                var fontSize = _GetFontSizeFromStyleSheetData(firstStyleSheetData);
                 // TODO: Fix this hack
                 fontSize = fontSize / 75 * 18;
-                var textColor = _GetTextColorFromStyelSheetData(firstStyelSheetData);
+                var textColor = _GetTextColorFromStyelSheetData(firstStyleSheetData);
 
                 var documentResources = (Properties) engineData["DocumentResources"];
                 var fontSet = (ArrayList) documentResources["FontSet"];
