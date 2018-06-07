@@ -45,6 +45,8 @@ namespace Agugu.Editor
         private static readonly XNamespace _aguguNamespace = "http://www.agugu.org/";
         private static readonly XNamespace _rdfNamespace   = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
+        private const int DocumentRootMagicLayerId = -1;
+
         private const string ConfigRootTag = "Config";
         private const string LayersRootTag = "Layers";
         private const string BagTag        = "Bag";
@@ -81,6 +83,13 @@ namespace Agugu.Editor
                 uiTree.Width = document.Width;
                 uiTree.Height = document.Height;
                 uiTree.Configs = _ParseConfig(document);
+
+                Dictionary<string, string> config = uiTree.Configs.GetLayerConfig(DocumentRootMagicLayerId);
+
+                uiTree.Pivot = _GetPivot(config);
+
+                uiTree.XAnchor = _GetXAnchorType(config);
+                uiTree.YAnchor = _GetYAnchorType(config);
 
                 var imageResource = document.ImageResources;
                 var resolutionProperty = imageResource["Resolution"] as Reader_ResolutionInfo;
@@ -261,7 +270,7 @@ namespace Agugu.Editor
 
                 var fontIndex = (int) firstStyelSheetData["Font"];
 
-                var fontSize = _GetFontSizeFromStyelSheetData(firstStyelSheetData);
+                var fontSize = _GetFontSizeFromStyleSheetData(firstStyelSheetData);
                 // TODO: Fix this hack
                 fontSize = fontSize / 75 * 18;
                 var textColor = _GetTextColorFromStyelSheetData(firstStyelSheetData);
@@ -327,7 +336,7 @@ namespace Agugu.Editor
             return psdLayer.Resources.Contains("TySh");
         }
 
-        private static float _GetFontSizeFromStyelSheetData(Properties styleSheetData)
+        private static float _GetFontSizeFromStyleSheetData(Properties styleSheetData)
         {
             // Font size could be omitted TODO: Find official default Value
             if (styleSheetData.Contains("FontSize"))
@@ -408,6 +417,17 @@ namespace Agugu.Editor
             return outputTexture2D;
         }
 
+        private static Vector2 _GetPivot(Dictionary<string, string> config)
+        {
+            return new Vector2(_GetLayerConfigAsFloat(config, XPivotPropertyTag, 0.5f),
+                _GetLayerConfigAsFloat(config, YPivotPropertyTag, 0.5f));
+        }
+
+        private static XAnchorType _GetXAnchorType(Dictionary<string, string> config)
+        {
+            return _GetXAnchorType(config.GetValueOrDefault(XAnchorPropertyTag));
+        }
+
         private static XAnchorType _GetXAnchorType(string value)
         {
             switch (value)
@@ -418,6 +438,11 @@ namespace Agugu.Editor
                 case "stretch": return XAnchorType.Stretch;
                 default: return XAnchorType.None;
             }
+        }
+
+        private static YAnchorType _GetYAnchorType(Dictionary<string, string> config)
+        {
+            return _GetYAnchorType(config.GetValueOrDefault(YAnchorPropertyTag));
         }
 
         private static YAnchorType _GetYAnchorType(string value)

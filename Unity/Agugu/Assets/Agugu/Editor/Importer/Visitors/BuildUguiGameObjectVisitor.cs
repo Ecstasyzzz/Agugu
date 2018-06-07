@@ -26,19 +26,22 @@ namespace Agugu.Editor
         public GameObject Visit(UiTreeRoot root)
         {
             var uiRootGameObject = new GameObject(root.Name);
-
             var uiRootRectTransform = uiRootGameObject.AddComponent<RectTransform>();
-            uiRootRectTransform.anchorMin = Vector2.zero;
-            uiRootRectTransform.anchorMax = Vector2.one;
-            uiRootRectTransform.offsetMin = Vector2.zero;
-            uiRootRectTransform.offsetMax = Vector2.zero;
+            var fullDocumentRect = new Rect(0, 0, root.Width, root.Height);
+
+            _SetRectTransform
+            (
+                uiRootRectTransform,
+                fullDocumentRect, fullDocumentRect,
+                root.GetAnchorMinValue(), root.GetAnchorMaxValue(),
+                root.Pivot
+            );
             uiRootRectTransform.ForceUpdateRectTransforms();
 
             var layerIdTag = uiRootGameObject.AddComponent<PsdLayerIdTag>();
             layerIdTag.LayerId = -1;
 
-            var baseRect = new Rect(0, 0, root.Width, root.Height);
-            var childrenVisitor = new BuildUguiGameObjectVisitor(baseRect, uiRootRectTransform, _basePixelPerInch);
+            var childrenVisitor = new BuildUguiGameObjectVisitor(fullDocumentRect, uiRootRectTransform, _basePixelPerInch);
             root.Children.ForEach(child => child.Accept(childrenVisitor));
 
             return uiRootGameObject;
@@ -50,7 +53,7 @@ namespace Agugu.Editor
 
             var groupGameObject = new GameObject(node.Name);
             var groupRectTransform = groupGameObject.AddComponent<RectTransform>();
-            groupGameObject.transform.SetParent(_parent, worldPositionStays: false);
+            
 
             var layerIdTag = groupGameObject.AddComponent<PsdLayerIdTag>();
             layerIdTag.LayerId = node.Id;
@@ -59,28 +62,29 @@ namespace Agugu.Editor
             (
                 groupRectTransform,
                 node.Rect, _parentRect,
-                _GetAnchorMin(node), _GetAnchorMax(node),
+                node.GetAnchorMinValue(), node.GetAnchorMaxValue(),
                 node.Pivot
             );
 
             var childrenVisitor = new BuildUguiGameObjectVisitor(node.Rect, groupRectTransform, _basePixelPerInch);
             node.Children.ForEach(child => child.Accept(childrenVisitor));
 
+            groupRectTransform.SetParent(_parent, worldPositionStays: false);
             groupGameObject.SetActive(node.IsVisible);
-
         }
 
         public void Visit(TextNode node)
         {
             if (node.IsSkipped) { return; }
 
-            var uiGameObject = new GameObject(node.Name);
-            var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
+            var textGameObject = new GameObject(node.Name);
+            var textRectTransform = textGameObject.AddComponent<RectTransform>();
+           
 
-            var layerIdTag = uiGameObject.AddComponent<PsdLayerIdTag>();
+            var layerIdTag = textGameObject.AddComponent<PsdLayerIdTag>();
             layerIdTag.LayerId = node.Id;
 
-            var text = uiGameObject.AddComponent<Text>();
+            var text = textGameObject.AddComponent<Text>();
             text.text = node.Text;
             text.color = node.TextColor;
             Font font = AguguConfig.Instance.GetFont(node.FontName);
@@ -101,100 +105,49 @@ namespace Agugu.Editor
 
             _SetRectTransform
             (
-                uiRectTransform,
+                textRectTransform,
                 adjustedRect, _parentRect,
-                _GetAnchorMin(node), _GetAnchorMax(node),
+                node.GetAnchorMinValue(), node.GetAnchorMaxValue(),
                 node.Pivot
             );
 
-            uiGameObject.transform.SetParent(_parent, worldPositionStays: false);
-            uiGameObject.SetActive(node.IsVisible);
+            textRectTransform.SetParent(_parent, worldPositionStays: false);
+            textGameObject.SetActive(node.IsVisible);
         }
 
         public void Visit(ImageNode node)
         {
             if (node.IsSkipped) { return; }
 
-            var uiGameObject = new GameObject(node.Name);
-            var uiRectTransform = uiGameObject.AddComponent<RectTransform>();
+            var imageGameObject = new GameObject(node.Name);
+            var uiRectTransform = imageGameObject.AddComponent<RectTransform>();
 
             if (node.WidgetType != WidgetType.EmptyGraphic)
             {
                 Sprite importedSprite = node.SpriteSource.GetSprite();
-                var image = uiGameObject.AddComponent<Image>();
+                var image = imageGameObject.AddComponent<Image>();
                 image.sprite = importedSprite;
             }
             else
             {
-                uiGameObject.AddComponent<EmptyGraphic>();
+                imageGameObject.AddComponent<EmptyGraphic>();
             }
 
-            var layerIdTag = uiGameObject.AddComponent<PsdLayerIdTag>();
-                layerIdTag.LayerId = node.Id;
+            var layerIdTag = imageGameObject.AddComponent<PsdLayerIdTag>();
+            layerIdTag.LayerId = node.Id;
 
             _SetRectTransform
             (
                 uiRectTransform,
                 node.Rect, _parentRect,
-                _GetAnchorMin(node), _GetAnchorMax(node),
+                node.GetAnchorMinValue(), node.GetAnchorMaxValue(),
                 node.Pivot
             );
 
             // Have to set localPosition before parenting
             // Or the last imported layer will be reset to 0, 0, 0, I think it's a bug :(
-            uiGameObject.transform.SetParent(_parent, worldPositionStays: false);
-
-            uiGameObject.SetActive(node.IsVisible);
-        }
-
-        private Vector2 _GetAnchorMin(UiNode node)
-        {
-            float x;
-            switch (node.XAnchor)
-            {
-                case XAnchorType.Left: x = 0; break;
-                case XAnchorType.Center: x = 0.5f; break;
-                case XAnchorType.Right: x = 1; break;
-                case XAnchorType.Stretch: x = 0; break;
-                default: x = 0.5f; break;
-            }
-
-            float y;
-            switch (node.YAnchor)
-            {
-                case YAnchorType.Bottom: y = 0; break;
-                case YAnchorType.Middle: y = 0.5f; break;
-                case YAnchorType.Top: y = 1; break;
-                case YAnchorType.Stretch: y = 0; break;
-                default: y = 0.5f; break;
-            }
-
-            return new Vector2(x, y);
-        }
-
-        private Vector2 _GetAnchorMax(UiNode node)
-        {
-            float x;
-            switch (node.XAnchor)
-            {
-                case XAnchorType.Left: x = 0; break;
-                case XAnchorType.Center: x = 0.5f; break;
-                case XAnchorType.Right: x = 1; break;
-                case XAnchorType.Stretch: x = 1; break;
-                default: x = 0.5f; break;
-            }
-
-            float y;
-            switch (node.YAnchor)
-            {
-                case YAnchorType.Bottom: y = 0; break;
-                case YAnchorType.Middle: y = 0.5f; break;
-                case YAnchorType.Top: y = 1; break;
-                case YAnchorType.Stretch: y = 1; break;
-                default: y = 0.5f; break;
-            }
-
-            return new Vector2(x, y);
+            imageGameObject.transform.SetParent(_parent, worldPositionStays: false);
+            imageGameObject.SetActive(node.IsVisible);
         }
 
         private static void _SetRectTransform
@@ -208,7 +161,8 @@ namespace Agugu.Editor
             Vector2 anchorMinPosition = Vector2Extension.LerpUnclamped(parentRect.min, parentRect.max, anchorMin);
             Vector2 anchorMaxPosition = Vector2Extension.LerpUnclamped(parentRect.min, parentRect.max, anchorMax);
             Vector2 anchorSize = anchorMaxPosition - anchorMinPosition;
-            Vector2 anchorReferencePosition = Vector2Extension.LerpUnclamped(anchorMinPosition, anchorMaxPosition, pivot);
+            Vector2 anchorReferencePosition = Vector2Extension.LerpUnclamped(anchorMinPosition, 
+                                                                             anchorMaxPosition, pivot);
             Vector2 pivotPosition = Vector2Extension.LerpUnclamped(rect.min, rect.max, pivot);
 
             rectTransform.pivot = pivot;

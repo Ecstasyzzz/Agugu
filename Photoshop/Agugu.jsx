@@ -12,13 +12,20 @@ var config = {};
 
 function getAllLayerInfos(doc){
     var result = [];
+    
+    var documentInfo = {};
+    documentInfo.name = "document";
+    documentInfo.id = -1;
+    documentInfo.indent = 0;
+    result.push(documentInfo);
+    
     for (var i = 0; i < doc.layers.length; i++)
     {
         var layer = doc.layers[i];
-        var layerInfo = extractLayerInfo(layer, 0);
+        var layerInfo = extractLayerInfo(layer, 1);
         result.push(layerInfo);
 
-        getLayerNameRecursive(result, layer, 1);
+        getLayerNameRecursive(result, layer, 2);
     }
     return result;
 }

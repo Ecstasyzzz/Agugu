@@ -16,9 +16,7 @@ namespace Agugu.Editor
         public YAnchorType YAnchor;
         public Rect        Rect;
 
-        public UiNode()
-        {
-        }
+        public UiNode() { }
 
         public UiNode(UiNode copySource)
         {
@@ -33,9 +31,7 @@ namespace Agugu.Editor
             Rect = copySource.Rect;
         }
 
-        public virtual void Accept(IUiNodeVisitor visitor)
-        {
-        }
+        public virtual void Accept(IUiNodeVisitor visitor) { }
     }
 
 
@@ -51,13 +47,8 @@ namespace Agugu.Editor
         public Vector2 CellSize;
         public Vector2 Spacing;
 
-        public GroupNode()
-        {
-        }
-
-        public GroupNode(UiNode baseNode) : base(baseNode)
-        {
-        }
+        public GroupNode() { }
+        public GroupNode(UiNode baseNode) : base(baseNode) { }
 
         public void AddChild(UiNode node)
         {
@@ -75,13 +66,8 @@ namespace Agugu.Editor
         public ISpriteSource SpriteSource;
         public WidgetType    WidgetType;
 
-        public ImageNode()
-        {
-        }
-
-        public ImageNode(UiNode baseNode) : base(baseNode)
-        {
-        }
+        public ImageNode() { }
+        public ImageNode(UiNode baseNode) : base(baseNode) { }
 
         public override void Accept(IUiNodeVisitor visitor)
         {
@@ -97,13 +83,8 @@ namespace Agugu.Editor
         public string Text;
         public Color  TextColor;
 
-        public TextNode()
-        {
-        }
-
-        public TextNode(UiNode baseNode) : base(baseNode)
-        {
-        }
+        public TextNode() { }
+        public TextNode(UiNode baseNode) : base(baseNode) { }
 
         public override void Accept(IUiNodeVisitor visitor)
         {
