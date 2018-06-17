@@ -62,11 +62,20 @@ namespace Agugu.Editor
                 string outputTextureFilename = string.Format(_prefix + "{0}.png", node.Name);
                 string outputTexturePath = Path.Combine(_basePath, outputTextureFilename);
 
-                byte[] existingTexturePngData = File.ReadAllBytes(outputTexturePath);
-                byte[] newTexturePngData = inMemoryTexture.Texture2D.EncodeToPNG();
-                bool isSameTexture = existingTexturePngData.SequenceEqual(newTexturePngData);
+                bool shouldWriteTexture = true;
+                bool hasExistingTexture = File.Exists(outputTexturePath);
+                if (hasExistingTexture)
+                {
+                    byte[] existingTexturePngData = File.ReadAllBytes(outputTexturePath);
+                    byte[] newTexturePngData = inMemoryTexture.Texture2D.EncodeToPNG();
+                    bool isSameTexture = existingTexturePngData.SequenceEqual(newTexturePngData);
+                    if (isSameTexture)
+                    {
+                        shouldWriteTexture = false;
+                    }
+                }
 
-                if (!isSameTexture)
+                if (shouldWriteTexture)
                 {
                     File.WriteAllBytes(outputTexturePath, inMemoryTexture.Texture2D.EncodeToPNG());
                     _createdTextureFilename.Add(outputTexturePath);
