@@ -262,7 +262,9 @@ namespace Agugu.Editor
                 return new ImageNode(baseUiNode)
                 {
                     WidgetType = widgetType,
-                    SpriteSource = new InMemoryTextureSpriteSource {Texture2D = texture2D}
+                    SpriteSource = texture2D != null ?
+                        new InMemoryTextureSpriteSource { Texture2D = texture2D } :
+                        (ISpriteSource) new NullSpriteSource()
                 };
             }
         }
@@ -350,6 +352,12 @@ namespace Agugu.Editor
             int width = layer.Width;
             int height = layer.Height;
             int pixelCount = width * height;
+
+            if (pixelCount == 0)
+            {
+                Debug.LogWarningFormat("Encounter 0 pixel layer at {0}", layer.Name);
+                return null;
+            }
 
             var pixelArray = new Color32[pixelCount];
 
