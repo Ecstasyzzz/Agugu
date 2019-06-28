@@ -9,7 +9,6 @@ using UnityEngine;
 
 using Ntreev.Library.Psd;
 using Ntreev.Library.Psd.Readers.ImageResources;
-using Ntreev.Library.Psd.Readers.LayerResources;
 using Ntreev.Library.Psd.Structures;
 
 namespace Agugu.Editor
@@ -45,6 +44,8 @@ namespace Agugu.Editor
         private static readonly XNamespace _aguguNamespace = "http://www.agugu.org/";
         private static readonly XNamespace _rdfNamespace   = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
+        private const int DocumentRootMagicLayerId = -1;
+
         private const string ConfigRootTag = "Config";
         private const string LayersRootTag = "Layers";
         private const string BagTag        = "Bag";
@@ -60,16 +61,7 @@ namespace Agugu.Editor
 
         private const string XPivotPropertyTag = "xPivot";
         private const string YPivotPropertyTag = "yPivot";
-
-        private const string HasScrollRectPropertyTag          = "hasScrollRect";
-        private const string IsScrollRectHorizontalPropertyTag = "isScrollRectHorizontal";
-        private const string IsScrollRectVerticalPropertyTag   = "isScrollRectVertical";
-
-        private const string HasGridPropertyTag       = "hasGrid";
-        private const string GridCellSizeXPropertyTag = "gridCellSizeX";
-        private const string GridCellSizeYPropertyTag = "gridCellSizeY";
-        private const string GridSpacingXPropertyTag  = "gridSpacingX";
-        private const string GridSpacingYPropertyTag  = "gridSpacingY";
+        
 
         public static UiTreeRoot Parse(string psdPath)
         {
@@ -81,6 +73,13 @@ namespace Agugu.Editor
                 uiTree.Width = document.Width;
                 uiTree.Height = document.Height;
                 uiTree.Configs = _ParseConfig(document);
+
+                PsdLayerConfig config = uiTree.Configs.GetLayerConfig(DocumentRootMagicLayerId);
+
+                uiTree.Pivot = _GetPivot(config);
+
+                uiTree.XAnchor = _GetXAnchorType(config);
+                uiTree.YAnchor = _GetYAnchorType(config);
 
                 var imageResource = document.ImageResources;
                 var resolutionProperty = imageResource["Resolution"] as Reader_ResolutionInfo;
@@ -97,7 +96,7 @@ namespace Agugu.Editor
             }
         }
 
-        private static PsdLayerConfigs _ParseConfig(PsdDocument document)
+        private static PsdLayerConfigSet _ParseConfig(PsdDocument document)
         {
             IProperties imageResources = document.ImageResources;
             if (imageResources.Contains("XmpMetadata"))
@@ -105,17 +104,17 @@ namespace Agugu.Editor
                 var xmpImageResource = imageResources["XmpMetadata"] as Reader_XmpMetadata;
                 var xmpValue = xmpImageResource.Value["Xmp"] as string;
 
-                return ParseXMP(xmpValue);
+                return ParseXmp(xmpValue);
             }
             else
             {
-                return new PsdLayerConfigs();
+                return new PsdLayerConfigSet();
             }
         }
 
-        public static PsdLayerConfigs ParseXMP(string xmpString)
+        public static PsdLayerConfigSet ParseXmp(string xmpString)
         {
-            var result = new PsdLayerConfigs();
+            var result = new PsdLayerConfigSet();
             var xmp = XDocument.Parse(xmpString);
 
             XElement configRoot = xmp.Descendants(_aguguNamespace + ConfigRootTag).FirstOrDefault();
@@ -162,7 +161,7 @@ namespace Agugu.Editor
                     propertyDictionary.Add(propertyName, propertyValue);
                 }
 
-                result.SetLayerConfig(layerId, propertyDictionary);
+                result.SetLayerConfig(layerId, new PsdLayerConfig(propertyDictionary));
             }
 
             return result;
@@ -174,15 +173,14 @@ namespace Agugu.Editor
             string name = layer.Name;
             bool isVisible = layer.IsVisible;
 
-            var config = tree.Configs.GetLayerConfig(id);
+            PsdLayerConfig config = tree.Configs.GetLayerConfig(id);
 
-            bool isSkipped = _GetLayerConfigAsBool(config, IsSkippedPropertyTag);
+            bool isSkipped = config.GetLayerConfigAsBool(IsSkippedPropertyTag);
 
-            Vector2 pivot = new Vector2(_GetLayerConfigAsFloat(config, XPivotPropertyTag, 0.5f),
-                _GetLayerConfigAsFloat(config, YPivotPropertyTag, 0.5f));
+            Vector2 pivot = _GetPivot(config);
 
-            XAnchorType xAnchor = _GetXAnchorType(config.GetValueOrDefault(XAnchorPropertyTag));
-            YAnchorType yAnchor = _GetYAnchorType(config.GetValueOrDefault(YAnchorPropertyTag));
+            XAnchorType xAnchor = _GetXAnchorType(config);
+            YAnchorType yAnchor = _GetYAnchorType(config);
 
             var rect = new Rect
             {
@@ -210,42 +208,15 @@ namespace Agugu.Editor
 
             if (isGroup)
             {
-                bool hasScrollRect = _GetLayerConfigAsBool(config, HasScrollRectPropertyTag);
-                bool isScrollRectHorizontal = _GetLayerConfigAsBool(config, IsScrollRectHorizontalPropertyTag);
-                bool isScrollRectVertical = _GetLayerConfigAsBool(config, IsScrollRectVerticalPropertyTag);
-
-                bool hasGrid = _GetLayerConfigAsBool(config, HasGridPropertyTag);
-                Vector2 gridCellSize = Vector2.zero;
-                Vector2 gridSpacing = Vector2.zero;
-
-                if (hasGrid)
-                {
-                    float gridCellSizeX = _GetLayerConfigAsFloat(config, GridCellSizeXPropertyTag);
-                    float gridCellSizeY = _GetLayerConfigAsFloat(config, GridCellSizeYPropertyTag);
-                    float gridSpacingX = _GetLayerConfigAsFloat(config, GridSpacingXPropertyTag);
-                    float gridSpacingY = _GetLayerConfigAsFloat(config, GridSpacingYPropertyTag);
-
-                    gridCellSize = new Vector2(gridCellSizeX, gridCellSizeY);
-                    gridSpacing = new Vector2(gridSpacingX, gridSpacingY);
-                }
-
                 var children = new List<UiNode>();
 
-                foreach (PsdLayer childlayer in layer.Childs)
+                foreach (PsdLayer childLayer in layer.Childs)
                 {
-                    children.Add(_ParsePsdLayerRecursive(tree, childlayer));
+                    children.Add(_ParsePsdLayerRecursive(tree, childLayer));
                 }
 
                 return new GroupNode(baseUiNode)
                 {
-                    HasScrollRect = hasScrollRect,
-                    IsScrollRectHorizontal = isScrollRectHorizontal,
-                    IsScrollRectVertical = isScrollRectVertical,
-
-                    HasGrid = hasGrid,
-                    CellSize = gridCellSize,
-                    Spacing = gridSpacing,
-
                     Children = children
                 };
             }
@@ -257,14 +228,14 @@ namespace Agugu.Editor
                 var runArray = (ArrayList) styleRun["RunArray"];
                 var firstRunArrayElement = (Properties) runArray[0];
                 var firstStyleSheet = (Properties) firstRunArrayElement["StyleSheet"];
-                var firstStyelSheetData = (Properties) firstStyleSheet["StyleSheetData"];
+                var firstStyleSheetData = (Properties) firstStyleSheet["StyleSheetData"];
 
-                var fontIndex = (int) firstStyelSheetData["Font"];
+                var fontIndex = (int)firstStyleSheetData["Font"];
 
-                var fontSize = _GetFontSizeFromStyelSheetData(firstStyelSheetData);
+                var fontSize = _GetFontSizeFromStyleSheetData(firstStyleSheetData);
                 // TODO: Fix this hack
                 fontSize = fontSize / 75 * 18;
-                var textColor = _GetTextColorFromStyelSheetData(firstStyelSheetData);
+                var textColor = _GetTextColorFromStyleSheetData(firstStyleSheetData);
 
                 var documentResources = (Properties) engineData["DocumentResources"];
                 var fontSet = (ArrayList) documentResources["FontSet"];
@@ -284,38 +255,46 @@ namespace Agugu.Editor
             }
             else
             {
-                string widgetTypeString = config.GetValueOrDefault(WidgetTypePropertyTag);
-                WidgetType widgetType = _GetWidgetType(widgetTypeString);
+                WidgetType widgetType = config.GetLayerConfigAsWidgetType(WidgetTypePropertyTag);
 
                 Texture2D texture2D = GetTexture2DFromPsdLayer(layer);
 
                 return new ImageNode(baseUiNode)
                 {
                     WidgetType = widgetType,
-                    SpriteSource = new InMemoryTextureSpriteSource {Texture2D = texture2D}
+                    SpriteSource = texture2D != null ?
+                        new InMemoryTextureSpriteSource { Texture2D = texture2D } :
+                        (ISpriteSource) new NullSpriteSource()
                 };
             }
         }
 
-        private static bool _GetLayerConfigAsBool(Dictionary<string, string> layerConfig, string tag)
+
+        // RectTransform
+        private static Vector2 _GetPivot(PsdLayerConfig config)
         {
-            string tagValue = layerConfig.GetValueOrDefault(tag);
-            return string.Equals(tagValue, "true", StringComparison.OrdinalIgnoreCase);
+            float pivotX = config.GetLayerConfigAsFloat(XPivotPropertyTag, 0.5f);
+            float pivotY = config.GetLayerConfigAsFloat(YPivotPropertyTag, 0.5f);
+            return new Vector2(pivotX, pivotY);
         }
 
-        private static float _GetLayerConfigAsFloat(Dictionary<string, string> layerConfig, string tag)
+        private static XAnchorType _GetXAnchorType(PsdLayerConfig config)
         {
-            string tagValue = layerConfig.GetValueOrDefault(tag);
-            return float.Parse(tagValue);
+            return config.GetLayerConfigAsXAnchorType(XAnchorPropertyTag);
         }
 
-        private static float _GetLayerConfigAsFloat(Dictionary<string, string> layerConfig, string tag,
-            float                                                              defaultValue)
+        private static YAnchorType _GetYAnchorType(PsdLayerConfig config)
         {
-            string tagValue = layerConfig.GetValueOrDefault(tag);
-            return !string.IsNullOrEmpty(tagValue) ? float.Parse(tagValue) : defaultValue;
+            return config.GetLayerConfigAsYAnchorType(YAnchorPropertyTag);
         }
 
+        private static WidgetType _GetWidgetType(PsdLayerConfig config)
+        {
+            return config.GetLayerConfigAsWidgetType(WidgetTypePropertyTag);
+        }
+
+
+        // Layer Type
         private static bool _IsGroupLayer(PsdLayer psdLayer)
         {
             return psdLayer.SectionType == SectionType.Opend ||
@@ -327,7 +306,9 @@ namespace Agugu.Editor
             return psdLayer.Resources.Contains("TySh");
         }
 
-        private static float _GetFontSizeFromStyelSheetData(Properties styleSheetData)
+
+        // Text
+        private static float _GetFontSizeFromStyleSheetData(Properties styleSheetData)
         {
             // Font size could be omitted TODO: Find official default Value
             if (styleSheetData.Contains("FontSize"))
@@ -338,7 +319,7 @@ namespace Agugu.Editor
             return 42;
         }
 
-        private static Color _GetTextColorFromStyelSheetData(Properties styleSheetData)
+        private static Color _GetTextColorFromStyleSheetData(Properties styleSheetData)
         {
             // FillColor also could be omitted
             if (styleSheetData.Contains("FillColor"))
@@ -357,17 +338,8 @@ namespace Agugu.Editor
             return Color.black;
         }
 
-        private static WidgetType _GetWidgetType(string widgetString)
-        {
-            switch (widgetString)
-            {
-                case "image": return WidgetType.Image;
-                case "text": return WidgetType.Text;
-                case "empty": return WidgetType.EmptyGraphic;
-                default: return WidgetType.None;
-            }
-        }
-
+        
+        // Image
         public static Texture2D GetTexture2DFromPsdLayer(IPsdLayer layer)
         {
             IChannel[] channels = layer.Channels;
@@ -380,6 +352,12 @@ namespace Agugu.Editor
             int width = layer.Width;
             int height = layer.Height;
             int pixelCount = width * height;
+
+            if (pixelCount == 0)
+            {
+                Debug.LogWarningFormat("Encounter 0 pixel layer at {0}", layer.Name);
+                return null;
+            }
 
             var pixelArray = new Color32[pixelCount];
 
@@ -406,30 +384,6 @@ namespace Agugu.Editor
             outputTexture2D.Apply();
 
             return outputTexture2D;
-        }
-
-        private static XAnchorType _GetXAnchorType(string value)
-        {
-            switch (value)
-            {
-                case "left": return XAnchorType.Left;
-                case "center": return XAnchorType.Center;
-                case "right": return XAnchorType.Right;
-                case "stretch": return XAnchorType.Stretch;
-                default: return XAnchorType.None;
-            }
-        }
-
-        private static YAnchorType _GetYAnchorType(string value)
-        {
-            switch (value)
-            {
-                case "top": return YAnchorType.Top;
-                case "middle": return YAnchorType.Middle;
-                case "bottom": return YAnchorType.Bottom;
-                case "stretch": return YAnchorType.Stretch;
-                default: return YAnchorType.None;
-            }
         }
     }
 }

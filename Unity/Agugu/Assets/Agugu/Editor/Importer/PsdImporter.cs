@@ -1,7 +1,8 @@
 ﻿using System;
 using System.IO;
 using System.Collections;
-
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEditor;
@@ -124,10 +125,32 @@ namespace Agugu.Editor
         public static void _SaveTextureAsAsset(string psdPath, UiTreeRoot uiTree)
         {
             string importedTexturesFolder = _GetImportedTexturesSavePath(psdPath);
-            _ClearFolder(importedTexturesFolder);
+            _EnsureFolder(importedTexturesFolder);
+            string[] allExistingFilePaths = Directory.GetFiles(importedTexturesFolder);
+            List<string> allExistingFilenameList = allExistingFilePaths.Select(Path.GetFileName).ToList();
 
             var saveTextureVisitor = new SaveTextureVisitor(importedTexturesFolder);
             saveTextureVisitor.Visit(uiTree);
+
+            var newUiRequiredFilenameList = new List<string>();
+            saveTextureVisitor.CreatedTextureFilename.ForEach(createdFilename =>
+            {
+                newUiRequiredFilenameList.Add(createdFilename);
+                newUiRequiredFilenameList.Add(createdFilename + ".meta");
+            });
+            saveTextureVisitor.ReusedTextureFilename.ForEach(reusedFilename =>
+            {
+                newUiRequiredFilenameList.Add(reusedFilename);
+                newUiRequiredFilenameList.Add(reusedFilename + ".meta");
+            });
+
+            foreach (string existingFilename in allExistingFilenameList)
+            {
+                if (!newUiRequiredFilenameList.Contains(existingFilename, StringComparer.OrdinalIgnoreCase))
+                {
+                    File.Delete(Path.Combine(importedTexturesFolder, existingFilename));
+                }
+            }
         }
 
         private static string _GetImportedTexturesSavePath(string psdPath)
@@ -137,20 +160,6 @@ namespace Agugu.Editor
             string importedTexturesFolder = Path.Combine(psdFolder, string.Format("ImportedTextures-{0}", psdName));
 
             return importedTexturesFolder;
-        }
-
-        private static void _ClearFolder(string folderPath)
-        {
-            _DeleteFolder(folderPath);
-            _EnsureFolder(folderPath);
-        }
-
-        private static void _DeleteFolder(string folderPath)
-        {
-            if (Directory.Exists(folderPath))
-            {
-                Directory.Delete(folderPath, recursive: true);
-            }
         }
 
         private static void _EnsureFolder(string folderPath)

@@ -1,4 +1,6 @@
 ﻿using System.IO;
+using System.Linq;
+using System.Collections.Generic;
 
 using UnityEngine;
 using UnityEditor;
@@ -9,6 +11,19 @@ namespace Agugu.Editor
     {
         private readonly string _basePath;
         private readonly string _prefix;
+
+        private readonly List<string> _reusedTextureFilename = new List<string>();
+        private readonly List<string> _createdTextureFilename = new List<string>();
+
+        public List<string> ReusedTextureFilename
+        {
+            get { return _reusedTextureFilename; }
+        }
+
+        public List<string> CreatedTextureFilename
+        {
+            get { return _createdTextureFilename; }
+        }
 
         public SaveTextureVisitor(string basePath, string prefix = "")
         {
@@ -25,7 +40,10 @@ namespace Agugu.Editor
         {
             if (!node.IsSkipped)
             {
-                node.Children.ForEach(child => child.Accept(new SaveTextureVisitor(_basePath, _prefix + node.Name)));
+                var childVisitor = new SaveTextureVisitor(_basePath, _prefix + node.Name);
+                node.Children.ForEach(child => child.Accept(childVisitor));
+                _reusedTextureFilename.AddRange(childVisitor.ReusedTextureFilename);
+                _createdTextureFilename.AddRange(childVisitor.CreatedTextureFilename);
             }
         }
 
@@ -44,9 +62,30 @@ namespace Agugu.Editor
                 string outputTextureFilename = string.Format(_prefix + "{0}.png", node.Name);
                 string outputTexturePath = Path.Combine(_basePath, outputTextureFilename);
 
-                File.WriteAllBytes(outputTexturePath, inMemoryTexture.Texture2D.EncodeToPNG());
+                bool shouldWriteTexture = true;
+                bool hasExistingTexture = File.Exists(outputTexturePath);
+                if (hasExistingTexture)
+                {
+                    byte[] existingTexturePngData = File.ReadAllBytes(outputTexturePath);
+                    byte[] newTexturePngData = inMemoryTexture.Texture2D.EncodeToPNG();
+                    bool isSameTexture = existingTexturePngData.SequenceEqual(newTexturePngData);
+                    if (isSameTexture)
+                    {
+                        shouldWriteTexture = false;
+                    }
+                }
 
-                AssetDatabase.Refresh();
+                if (shouldWriteTexture)
+                {
+                    File.WriteAllBytes(outputTexturePath, inMemoryTexture.Texture2D.EncodeToPNG());
+                    _createdTextureFilename.Add(outputTexturePath);
+
+                    AssetDatabase.Refresh();
+                }
+                else
+                {
+                    _reusedTextureFilename.Add(outputTextureFilename);
+                }
 
                 node.SpriteSource = new AssetSpriteSource(outputTexturePath);
             }

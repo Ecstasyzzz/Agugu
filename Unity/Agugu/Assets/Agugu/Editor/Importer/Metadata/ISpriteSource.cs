@@ -8,6 +8,14 @@ namespace Agugu.Editor
         Sprite GetSprite();
     }
 
+    public class NullSpriteSource : ISpriteSource
+    {
+        public Sprite GetSprite()
+        {
+            return null;
+        }
+    }
+
     public class InMemoryTextureSpriteSource : ISpriteSource
     {
         public Texture2D Texture2D;

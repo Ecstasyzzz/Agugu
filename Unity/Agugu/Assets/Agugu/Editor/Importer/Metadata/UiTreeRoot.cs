@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 
+using UnityEngine;
+
 namespace Agugu.Editor
 {
     public class UiTreeRoot
@@ -9,9 +11,13 @@ namespace Agugu.Editor
         public float Width;
         public float Height;
 
+        public Vector2     Pivot;
+        public XAnchorType XAnchor;
+        public YAnchorType YAnchor;
+
         public float HorizontalPixelPerInch;
 
-        public PsdLayerConfigs Configs  = new PsdLayerConfigs();
+        public PsdLayerConfigSet Configs  = new PsdLayerConfigSet();
         public List<UiNode>    Children = new List<UiNode>();
 
         public void AddChild(UiNode node)
