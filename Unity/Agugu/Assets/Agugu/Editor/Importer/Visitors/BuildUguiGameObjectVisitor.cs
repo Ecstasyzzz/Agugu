@@ -150,6 +150,12 @@ namespace Agugu.Editor
             imageGameObject.SetActive(node.IsVisible);
         }
 
+        public void Visit(ImageTextNode node)
+        {
+            Visit(node.Image);
+            Visit(node.Text);
+        }
+
         private static void _SetRectTransform
         (
             RectTransform rectTransform,

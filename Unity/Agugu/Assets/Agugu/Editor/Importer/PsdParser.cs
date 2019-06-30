@@ -222,51 +222,66 @@ namespace Agugu.Editor
             }
             else if (isText)
             {
-                var engineData = (StructureEngineData) layer.Resources["TySh.Text.EngineData"];
-                var engineDict = (Properties) engineData["EngineDict"];
-                var styleRun = (Properties) engineDict["StyleRun"];
-                var runArray = (ArrayList) styleRun["RunArray"];
-                var firstRunArrayElement = (Properties) runArray[0];
-                var firstStyleSheet = (Properties) firstRunArrayElement["StyleSheet"];
-                var firstStyleSheetData = (Properties) firstStyleSheet["StyleSheetData"];
-
-                var fontIndex = (int)firstStyleSheetData["Font"];
-
-                var fontSize = _GetFontSizeFromStyleSheetData(firstStyleSheetData);
-                // TODO: Fix this hack
-                fontSize = fontSize / 75 * 18;
-                var textColor = _GetTextColorFromStyleSheetData(firstStyleSheetData);
-
-                var documentResources = (Properties) engineData["DocumentResources"];
-                var fontSet = (ArrayList) documentResources["FontSet"];
-                var font = (Properties) fontSet[fontIndex];
-                var fontName = (string) font["Name"];
-
-                var text = (string) layer.Resources["TySh.Text.Txt"];
-
-                return new TextNode(baseUiNode)
+                //return _CreateTextNode(layer, baseUiNode);
+                return new ImageTextNode
                 {
-                    FontSize = fontSize,
-                    FontName = fontName,
-
-                    Text = text,
-                    TextColor = textColor
+                    Text = _CreateTextNode(layer, baseUiNode),
+                    Image = _CreateImageNode(layer, config, baseUiNode)
                 };
             }
             else
             {
-                WidgetType widgetType = config.GetLayerConfigAsWidgetType(WidgetTypePropertyTag);
-
-                Texture2D texture2D = GetTexture2DFromPsdLayer(layer);
-
-                return new ImageNode(baseUiNode)
-                {
-                    WidgetType = widgetType,
-                    SpriteSource = texture2D != null ?
-                        new InMemoryTextureSpriteSource { Texture2D = texture2D } :
-                        (ISpriteSource) new NullSpriteSource()
-                };
+                return _CreateImageNode(layer, config, baseUiNode);
             }
+        }
+
+        private static TextNode _CreateTextNode(PsdLayer layer, UiNode baseUiNode)
+        {
+            var engineData           = (StructureEngineData)layer.Resources["TySh.Text.EngineData"];
+            var engineDict           = (Properties)engineData["EngineDict"];
+            var styleRun             = (Properties)engineDict["StyleRun"];
+            var runArray             = (ArrayList)styleRun["RunArray"];
+            var firstRunArrayElement = (Properties)runArray[0];
+            var firstStyleSheet      = (Properties)firstRunArrayElement["StyleSheet"];
+            var firstStyleSheetData  = (Properties)firstStyleSheet["StyleSheetData"];
+
+            var fontIndex = (int)firstStyleSheetData["Font"];
+
+            var fontSize = _GetFontSizeFromStyleSheetData(firstStyleSheetData);
+            // TODO: Fix this hack
+            fontSize = fontSize / 75 * 18;
+            var textColor = _GetTextColorFromStyleSheetData(firstStyleSheetData);
+
+            var documentResources = (Properties)engineData["DocumentResources"];
+            var fontSet           = (ArrayList)documentResources["FontSet"];
+            var font              = (Properties)fontSet[fontIndex];
+            var fontName          = (string)font["Name"];
+
+            var text = (string)layer.Resources["TySh.Text.Txt"];
+
+            return new TextNode(baseUiNode)
+            {
+                FontSize = fontSize,
+                FontName = fontName,
+
+                Text = text,
+                TextColor = textColor
+            };
+        }
+
+        private static ImageNode _CreateImageNode(PsdLayer layer, PsdLayerConfig config, UiNode baseUiNode)
+        {
+            WidgetType widgetType = config.GetLayerConfigAsWidgetType(WidgetTypePropertyTag);
+
+            Texture2D texture2D = GetTexture2DFromPsdLayer(layer);
+
+            return new ImageNode(baseUiNode)
+            {
+                WidgetType = widgetType,
+                SpriteSource = texture2D != null ?
+                    new InMemoryTextureSpriteSource { Texture2D = texture2D } :
+                    (ISpriteSource)new NullSpriteSource()
+            };
         }
 
 

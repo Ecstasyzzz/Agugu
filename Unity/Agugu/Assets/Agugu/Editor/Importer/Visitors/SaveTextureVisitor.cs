@@ -40,7 +40,8 @@ namespace Agugu.Editor
         {
             if (!node.IsSkipped)
             {
-                var childVisitor = new SaveTextureVisitor(_basePath, _prefix + node.Name);
+                string slashEscapedName = node.Name.Replace('\\', '_').Replace('/', '_');
+                var childVisitor = new SaveTextureVisitor(_basePath, _prefix + slashEscapedName);
                 node.Children.ForEach(child => child.Accept(childVisitor));
                 _reusedTextureFilename.AddRange(childVisitor.ReusedTextureFilename);
                 _createdTextureFilename.AddRange(childVisitor.CreatedTextureFilename);
@@ -59,7 +60,8 @@ namespace Agugu.Editor
             {
                 var inMemoryTexture = (InMemoryTextureSpriteSource) node.SpriteSource;
 
-                string outputTextureFilename = string.Format("[{0}]{1}-{2}.png", node.Id, _prefix, node.Name);
+                string slashEscapedName = node.Name.Replace('\\', '_').Replace('/', '_');
+                string outputTextureFilename = string.Format("[{0}]{1}-{2}.png", node.Id, _prefix, slashEscapedName);
                 string outputTexturePath = Path.Combine(_basePath, outputTextureFilename);
 
                 bool shouldWriteTexture = true;
@@ -89,6 +91,11 @@ namespace Agugu.Editor
 
                 node.SpriteSource = new AssetSpriteSource(outputTexturePath);
             }
+        }
+
+        public void Visit(ImageTextNode node)
+        {
+            Visit(node.Image);
         }
     }
 }

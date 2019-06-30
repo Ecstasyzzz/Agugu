@@ -83,4 +83,18 @@ namespace Agugu.Editor
             visitor.Visit(this);
         }
     }
+
+    // Debug
+    public class ImageTextNode : UiNode
+    {
+        public ImageNode Image;
+        public TextNode Text;
+
+        public ImageTextNode() { }
+
+        public override void Accept(IUiNodeVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
+    }
 }

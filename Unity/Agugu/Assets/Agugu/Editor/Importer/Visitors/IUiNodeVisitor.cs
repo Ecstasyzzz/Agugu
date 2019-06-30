@@ -5,5 +5,7 @@
         void Visit(GroupNode node);
         void Visit(TextNode  node);
         void Visit(ImageNode node);
+
+        void Visit(ImageTextNode node);
     }
 }
