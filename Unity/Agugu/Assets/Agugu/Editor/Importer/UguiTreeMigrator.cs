@@ -1,14 +1,15 @@
-﻿using System.Linq;
+﻿using System.Text;
+using System.Linq;
 using System.Collections.Generic;
 
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEditor;
 
-using Agugu.Runtime;
-
 namespace Agugu.Editor
 {
+    using Agugu.Runtime;
+
     public class UguiTreeMigrator
     {
         public static void MigrateAppliedPrefabModification
@@ -62,7 +63,24 @@ namespace Agugu.Editor
             var mapping = new Dictionary<int, GameObject>();
             foreach (PsdLayerIdTag layerIdTag in psdLayerIdTagArray)
             {
-                mapping.Add(layerIdTag.LayerId, layerIdTag.gameObject);
+                int layerId = layerIdTag.LayerId;
+                if (!mapping.ContainsKey(layerId))
+                {
+                    mapping.Add(layerId, layerIdTag.gameObject);
+                }
+                else
+                {
+                    var stringBuilder = new StringBuilder();
+                    stringBuilder.AppendLine("Error: Prefab tree already contains GameObject with Layer ID: " +
+                                             layerId);
+                    stringBuilder.AppendLine("First added GameObject path: " +
+                                             AnimationUtility.CalculateTransformPath(mapping[layerId].transform,
+                                                 root.transform));
+                    stringBuilder.AppendLine("Current GameObject path: " +
+                                             AnimationUtility.CalculateTransformPath(layerIdTag.transform,
+                                                 root.transform));
+                    Debug.LogWarning(stringBuilder.ToString());
+                }
             }
 
             return mapping;
