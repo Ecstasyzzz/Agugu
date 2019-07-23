@@ -59,7 +59,7 @@ namespace Agugu.Editor
             {
                 var inMemoryTexture = (InMemoryTextureSpriteSource) node.SpriteSource;
 
-                string outputTextureFilename = string.Format(_prefix + "{0}.png", node.Name);
+                string outputTextureFilename = string.Format("[{0}]{1}-{2}.png", node.Id, _prefix, node.Name);
                 string outputTexturePath = Path.Combine(_basePath, outputTextureFilename);
 
                 bool shouldWriteTexture = true;
