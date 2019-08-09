@@ -6,6 +6,12 @@ using UnityEngine;
 using UnityEditor;
 using Object = UnityEngine.Object;
 
+public enum TextImportMode
+{
+    Text,
+    Image,
+    TextAndImage
+}
 
 [Serializable]
 public class FontName
@@ -17,6 +23,8 @@ public class FontName
 [CreateAssetMenu]
 public class AguguConfig : ScriptableObject
 {
+    [SerializeField] private TextImportMode _textImportMode = TextImportMode.Text;
+
     [SerializeField] private List<FontName> _fontLookup = new List<FontName>();
 
     [SerializeField] private List<Object> _trackedPsd = new List<Object>();
@@ -43,6 +51,11 @@ public class AguguConfig : ScriptableObject
 
             return _instance;
         }
+    }
+
+    public TextImportMode TextImportMode
+    {
+        get { return _textImportMode; }
     }
 
     public Font GetFont(string fontName)

@@ -222,12 +222,21 @@ namespace Agugu.Editor
             }
             else if (isText)
             {
-                //return _CreateTextNode(layer, baseUiNode);
-                return new ImageTextNode
+                switch (AguguConfig.Instance.TextImportMode)
                 {
-                    Text = _CreateTextNode(layer, baseUiNode),
-                    Image = _CreateImageNode(layer, config, baseUiNode)
-                };
+                    case TextImportMode.Text:
+                        return _CreateTextNode(layer, baseUiNode);
+                    case TextImportMode.Image:
+                        return _CreateImageNode(layer, config, baseUiNode);
+                    case TextImportMode.TextAndImage:
+                        return new ImageTextNode
+                        {
+                            Text = _CreateTextNode(layer, baseUiNode),
+                            Image = _CreateImageNode(layer, config, baseUiNode)
+                        };
+                    default:
+                        return _CreateTextNode(layer, baseUiNode);
+                }
             }
             else
             {
