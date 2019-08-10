@@ -29,6 +29,8 @@ namespace Agugu.Editor
             var uiRootRectTransform = uiRootGameObject.AddComponent<RectTransform>();
             var fullDocumentRect = new Rect(0, 0, root.Width, root.Height);
 
+            _SetPsdLayerIdTag(uiRootGameObject, -1);
+
             _SetRectTransform
             (
                 uiRootRectTransform,
@@ -38,14 +40,12 @@ namespace Agugu.Editor
             );
             uiRootRectTransform.ForceUpdateRectTransforms();
 
-            var layerIdTag = uiRootGameObject.AddComponent<PsdLayerIdTag>();
-            layerIdTag.LayerId = -1;
-
             var childrenVisitor = new BuildUguiGameObjectVisitor(fullDocumentRect, uiRootRectTransform, _basePixelPerInch);
             root.Children.ForEach(child => child.Accept(childrenVisitor));
 
             return uiRootGameObject;
         }
+
 
         public void Visit(GroupNode node)
         {
@@ -53,10 +53,8 @@ namespace Agugu.Editor
 
             var groupGameObject = new GameObject(node.Name);
             var groupRectTransform = groupGameObject.AddComponent<RectTransform>();
-            
 
-            var layerIdTag = groupGameObject.AddComponent<PsdLayerIdTag>();
-            layerIdTag.LayerId = node.Id;
+            _SetPsdLayerIdTag(groupGameObject, node.Id);
 
             _SetRectTransform
             (
@@ -73,16 +71,19 @@ namespace Agugu.Editor
             groupGameObject.SetActive(node.IsVisible);
         }
 
+
         public void Visit(TextNode node)
         {
             if (node.IsSkipped) { return; }
 
-            var textGameObject = new GameObject(node.Name);
-            var textRectTransform = textGameObject.AddComponent<RectTransform>();
-           
+            GameObject textGameObject = _CreateText(node);
+            _SetPsdLayerIdTag(textGameObject, node.Id);
+        }
 
-            var layerIdTag = textGameObject.AddComponent<PsdLayerIdTag>();
-            layerIdTag.LayerId = node.Id;
+        private GameObject _CreateText(TextNode node)
+        {
+            var textGameObject    = new GameObject(node.Name);
+            var textRectTransform = textGameObject.AddComponent<RectTransform>();
 
             var text = textGameObject.AddComponent<Text>();
             text.text = node.Text;
@@ -98,8 +99,8 @@ namespace Agugu.Editor
             text.resizeTextForBestFit = true;
 
             var originalHeight = node.Rect.height;
-            var halfHeight = originalHeight / 2;
-            var adjustedRect = new Rect(node.Rect);
+            var halfHeight     = originalHeight / 2;
+            var adjustedRect   = new Rect(node.Rect);
             adjustedRect.yMin -= halfHeight;
             adjustedRect.yMax += halfHeight;
 
@@ -113,12 +114,21 @@ namespace Agugu.Editor
 
             textRectTransform.SetParent(_parent, worldPositionStays: false);
             textGameObject.SetActive(node.IsVisible);
+
+            return textGameObject;
         }
+
 
         public void Visit(ImageNode node)
         {
             if (node.IsSkipped) { return; }
 
+            GameObject imageGameObject = _CreateImage(node);
+            _SetPsdLayerIdTag(imageGameObject, node.Id);
+        }
+
+        private GameObject _CreateImage(ImageNode node)
+        {
             var imageGameObject = new GameObject(node.Name);
             var uiRectTransform = imageGameObject.AddComponent<RectTransform>();
 
@@ -133,9 +143,6 @@ namespace Agugu.Editor
                 imageGameObject.AddComponent<EmptyGraphic>();
             }
 
-            var layerIdTag = imageGameObject.AddComponent<PsdLayerIdTag>();
-            layerIdTag.LayerId = node.Id;
-
             _SetRectTransform
             (
                 uiRectTransform,
@@ -148,12 +155,25 @@ namespace Agugu.Editor
             // Or the last imported layer will be reset to 0, 0, 0, I think it's a bug :(
             imageGameObject.transform.SetParent(_parent, worldPositionStays: false);
             imageGameObject.SetActive(node.IsVisible);
+
+            return imageGameObject;
         }
+
 
         public void Visit(ImageTextNode node)
         {
-            Visit(node.Image);
-            Visit(node.Text);
+            if (node.IsSkipped) { return; }
+
+            // Skip PSD Layer Tagging since ImageTextNode is for debugging
+            _CreateImage(node.Image);
+            _CreateText(node.Text);
+        }
+
+
+        private static void _SetPsdLayerIdTag(GameObject gameObject, int layerId)
+        {
+            var layerIdTag = gameObject.AddComponent<PsdLayerIdTag>();
+            layerIdTag.LayerId = layerId;
         }
 
         private static void _SetRectTransform
