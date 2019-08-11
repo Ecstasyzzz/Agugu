@@ -112,6 +112,8 @@ namespace Agugu.Editor
         private static IEnumerator _ImportPsdAsPrefabProcess(string psdPath, UiTreeRoot uiTree)
         {
             _SaveTextureAsAsset(psdPath, uiTree);
+            _UpdateTextMeshProCharacterSet(uiTree);
+            AguguConfig.Instance.UpdateTextMeshProFontAssets();
 
             yield return null;
 
@@ -122,7 +124,7 @@ namespace Agugu.Editor
             GameObject.DestroyImmediate(uiGameObject);
         }
 
-        public static void _SaveTextureAsAsset(string psdPath, UiTreeRoot uiTree)
+        private static void _SaveTextureAsAsset(string psdPath, UiTreeRoot uiTree)
         {
             string importedTexturesFolder = _GetImportedTexturesSavePath(psdPath);
             _EnsureFolder(importedTexturesFolder);
@@ -152,6 +154,15 @@ namespace Agugu.Editor
                 }
             }
         }
+
+        private static void _UpdateTextMeshProCharacterSet(UiTreeRoot uiTree)
+        {
+            if (AguguConfig.Instance.TextComponentType == TextComponentType.TextMeshPro)
+            {
+                var visitor = new TextMeshProCharacterSetUpdateVisitor();
+                visitor.Visit(uiTree);
+            }
+        } 
 
         private static string _GetImportedTexturesSavePath(string psdPath)
         {

@@ -2,6 +2,7 @@
 using UnityEngine.UI;
 
 using Agugu.Runtime;
+using TMPro;
 
 namespace Agugu.Editor
 {
@@ -82,6 +83,20 @@ namespace Agugu.Editor
 
         private GameObject _CreateText(TextNode node)
         {
+            if (AguguConfig.Instance.TextComponentType == TextComponentType.uGUI)
+            {
+                return _CreateUguiText(node);
+            }
+            else if (AguguConfig.Instance.TextComponentType == TextComponentType.TextMeshPro)
+            {
+                return _CreateTextMeshPro(node);
+            }
+
+            return null;
+        }
+
+        private GameObject _CreateUguiText(TextNode node)
+        {
             var textGameObject    = new GameObject(node.Name);
             var textRectTransform = textGameObject.AddComponent<RectTransform>();
 
@@ -93,6 +108,7 @@ namespace Agugu.Editor
             {
                 Debug.LogWarningFormat("Font not found: {0}, at {1}", node.FontName, node.Name);
             }
+
             text.font = font;
             // Photoshop uses 72 points per inch
             text.fontSize = (int)(node.FontSize / 72 * _basePixelPerInch);
@@ -108,6 +124,41 @@ namespace Agugu.Editor
             (
                 textRectTransform,
                 adjustedRect, _parentRect,
+                node.GetAnchorMinValue(), node.GetAnchorMaxValue(),
+                node.Pivot
+            );
+
+            textRectTransform.SetParent(_parent, worldPositionStays: false);
+            textGameObject.SetActive(node.IsVisible);
+
+            return textGameObject;
+        }
+
+        private GameObject _CreateTextMeshPro(TextNode node)
+        {
+            var textGameObject    = new GameObject(node.Name);
+            var textRectTransform = textGameObject.AddComponent<RectTransform>();
+
+            var text = textGameObject.AddComponent<TextMeshProUGUI>();
+            text.text = node.Text;
+            text.color = node.TextColor;
+            text.fontSize = node.FontSize;
+
+            TMP_FontAsset font = AguguConfig.Instance.GetTextMeshProFontAsset(node.FontName);
+            if (font == null)
+            {
+                Debug.LogWarningFormat("Font not found: {0}, at {1}", node.FontName, node.Name);
+            }
+            else
+            {
+                text.font = font;
+            }
+
+
+            _SetRectTransform
+            (
+                textRectTransform,
+                node.Rect, _parentRect,
                 node.GetAnchorMinValue(), node.GetAnchorMaxValue(),
                 node.Pivot
             );
