@@ -142,7 +142,10 @@ namespace Agugu.Editor
             var text = textGameObject.AddComponent<TextMeshProUGUI>();
             text.text = node.Text;
             text.color = node.TextColor;
-            text.fontSize = node.FontSize;
+            text.fontSize = node.FontSize * 4;
+            text.characterSpacing = 4;
+            text.alignment = TextAlignmentOptions.MidlineLeft;
+            text.enableWordWrapping = false;
 
             TMP_FontAsset font = AguguConfig.Instance.GetTextMeshProFontAsset(node.FontName);
             if (font == null)
