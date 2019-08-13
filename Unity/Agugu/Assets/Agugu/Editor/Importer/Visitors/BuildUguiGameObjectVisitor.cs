@@ -142,7 +142,7 @@ namespace Agugu.Editor
             var text = textGameObject.AddComponent<TextMeshProUGUI>();
             text.text = node.Text;
             text.color = node.TextColor;
-            text.fontSize = node.FontSize * 4;
+            text.fontSize = node.FontSize;
             text.characterSpacing = 4;
             text.alignment = TextAlignmentOptions.MidlineLeft;
             text.enableWordWrapping = false;

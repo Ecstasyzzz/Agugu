@@ -254,17 +254,16 @@ namespace Agugu.Editor
             var firstStyleSheet      = (Properties)firstRunArrayElement["StyleSheet"];
             var firstStyleSheetData  = (Properties)firstStyleSheet["StyleSheetData"];
 
-            var fontIndex = (int)firstStyleSheetData["Font"];
 
-            var fontSize = _GetFontSizeFromStyleSheetData(firstStyleSheetData);
-            // TODO: Fix this hack
-            fontSize = fontSize / 75 * 18;
+            var fontSize  = _GetFontSizeFromStyleSheetData(firstStyleSheetData);
             var textColor = _GetTextColorFromStyleSheetData(firstStyleSheetData);
 
             var documentResources = (Properties)engineData["DocumentResources"];
-            var fontSet           = (ArrayList)documentResources["FontSet"];
-            var font              = (Properties)fontSet[fontIndex];
-            var fontName          = (string)font["Name"];
+
+            var fontSet   = (ArrayList) documentResources["FontSet"];
+            var fontIndex = (int) firstStyleSheetData["Font"];
+            var font      = (Properties) fontSet[fontIndex];
+            var fontName  = (string) font["Name"];
 
             var text = (string)layer.Resources["TySh.Text.Txt"];
 
